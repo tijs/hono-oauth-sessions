@@ -60,7 +60,6 @@ export class ValTownOAuthSessions {
     (this.storage as any).sqlite = sqlite;
   }
 
-  // Mobile request detection removed - can be re-added if needed
 
   /**
    * Get Iron Session from request
