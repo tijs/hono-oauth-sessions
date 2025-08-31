@@ -1,8 +1,8 @@
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { describe, it, beforeEach } from "https://deno.land/std@0.224.0/testing/bdd.ts";
-import { ValTownOAuthSessions } from "./sessions.ts";
+import { beforeEach, describe, it } from "https://deno.land/std@0.224.0/testing/bdd.ts";
+import { HonoOAuthSessions } from "./sessions.ts";
 import { ConfigurationError, OAuthFlowError } from "./errors.ts";
-import type { OAuthStorage, OAuthClientInterface, SessionInterface } from "./types.ts";
+import type { OAuthClientInterface, OAuthStorage, SessionInterface } from "./types.ts";
 
 // Simple mock implementations for testing business logic
 class MockStorage implements OAuthStorage {
@@ -37,11 +37,11 @@ class MockOAuthClient implements OAuthClientInterface {
 
   async authorize(handle: string, options?: { state?: string }): Promise<URL> {
     this.lastAuthorizeCall = { handle, options };
-    
+
     if (this.shouldFailAuthorize) {
       throw new Error("OAuth authorization failed");
     }
-    
+
     return this.mockAuthUrl;
   }
 
@@ -66,15 +66,15 @@ class MockOAuthClient implements OAuthClientInterface {
   }
 }
 
-describe("ValTownOAuthSessions - Business Logic", () => {
+describe("HonoOAuthSessions - Business Logic", () => {
   let storage: MockStorage;
   let oauthClient: MockOAuthClient;
-  let sessions: ValTownOAuthSessions;
+  let sessions: HonoOAuthSessions;
 
   beforeEach(() => {
     storage = new MockStorage();
     oauthClient = new MockOAuthClient();
-    sessions = new ValTownOAuthSessions({
+    sessions = new HonoOAuthSessions({
       oauthClient,
       storage,
       cookieSecret: "test-secret-key-32-chars-long!",
@@ -87,7 +87,7 @@ describe("ValTownOAuthSessions - Business Logic", () => {
   describe("Constructor Configuration", () => {
     it("should throw for missing oauthClient", () => {
       try {
-        new ValTownOAuthSessions({
+        new HonoOAuthSessions({
           storage,
           cookieSecret: "test-secret",
           baseUrl: "https://test.com",
@@ -101,7 +101,7 @@ describe("ValTownOAuthSessions - Business Logic", () => {
 
     it("should throw for missing storage", () => {
       try {
-        new ValTownOAuthSessions({
+        new HonoOAuthSessions({
           oauthClient,
           cookieSecret: "test-secret",
           baseUrl: "https://test.com",
@@ -114,7 +114,7 @@ describe("ValTownOAuthSessions - Business Logic", () => {
     });
 
     it("should set default configuration values", () => {
-      const sessions = new ValTownOAuthSessions({
+      const sessions = new HonoOAuthSessions({
         oauthClient,
         storage,
         cookieSecret: "test-secret",
@@ -140,10 +140,10 @@ describe("ValTownOAuthSessions - Business Logic", () => {
 
     it("should create web OAuth state correctly", async () => {
       const authUrl = await sessions.startOAuth("test.bsky.social");
-      
+
       assertEquals(authUrl, oauthClient.mockAuthUrl.toString());
       assertEquals(oauthClient.lastAuthorizeCall?.handle, "test.bsky.social");
-      
+
       const stateParam = oauthClient.lastAuthorizeCall?.options?.state;
       if (stateParam) {
         const state = JSON.parse(stateParam);
@@ -159,9 +159,9 @@ describe("ValTownOAuthSessions - Business Logic", () => {
         mobile: true,
         codeChallenge: "challenge123",
       });
-      
+
       assertEquals(authUrl, oauthClient.mockAuthUrl.toString());
-      
+
       const stateParam = oauthClient.lastAuthorizeCall?.options?.state;
       if (stateParam) {
         const state = JSON.parse(stateParam);
@@ -174,7 +174,7 @@ describe("ValTownOAuthSessions - Business Logic", () => {
 
     it("should handle OAuth client failures", async () => {
       oauthClient.shouldFailAuthorize = true;
-      
+
       await assertRejects(
         () => sessions.startOAuth("test.bsky.social"),
         OAuthFlowError,
@@ -200,9 +200,9 @@ describe("ValTownOAuthSessions - Business Logic", () => {
       };
 
       await storage.set(`oauth_session:${testDid}`, sessionData);
-      
+
       const result = await sessions.getStoredOAuthData(testDid);
-      
+
       assertEquals(result?.did, testDid);
       assertEquals(result?.accessToken, "access_token_123");
       assertEquals(result?.handle, "test.bsky.social");
@@ -217,12 +217,12 @@ describe("ValTownOAuthSessions - Business Logic", () => {
     it("should delete session data on logout", async () => {
       const testDid = "did:plc:test123";
       await storage.set(`oauth_session:${testDid}`, { test: "data" });
-      
+
       assertEquals(storage.hasKey(`oauth_session:${testDid}`), true);
-      
+
       // Note: This is testing the storage deletion logic, not full logout
       await storage.delete(`oauth_session:${testDid}`);
-      
+
       assertEquals(storage.hasKey(`oauth_session:${testDid}`), false);
     });
   });
@@ -230,14 +230,14 @@ describe("ValTownOAuthSessions - Business Logic", () => {
   describe("Mobile Token Refresh Logic", () => {
     it("should reject invalid authorization header format", async () => {
       const result = await sessions.refreshMobileToken("invalid-header");
-      
+
       assertEquals(result.success, false);
       assertEquals(result.error, "Token refresh failed: Invalid authorization header");
     });
 
     it("should reject non-Bearer token format", async () => {
       const result = await sessions.refreshMobileToken("Basic dXNlcjpwYXNz");
-      
+
       assertEquals(result.success, false);
       assertEquals(result.error, "Token refresh failed: Invalid authorization header");
     });

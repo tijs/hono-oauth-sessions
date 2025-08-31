@@ -1,23 +1,22 @@
 {
-  "name": "@tijs/valtown-oauth-sessions",
+  "name": "@tijs/hono-oauth-sessions",
   "version": "0.1.0",
-  "description": "Storage-agnostic OAuth session management for AT Protocol - bring your own OAuth client and storage",
+  "description": "Storage-agnostic OAuth session management for AT Protocol with Hono - bring your own OAuth client and storage",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tijs/valtown-oauth-sessions.git"
+    "url": "git+https://github.com/tijs/hono-oauth-sessions.git"
   },
   "keywords": [
     "atproto",
     "oauth",
-    "valtown",
-    "deno",
     "hono",
+    "sessions",
+    "deno",
     "iron-session",
-    "sqlite",
     "bluesky",
     "authentication",
-    "sessions"
+    "storage-agnostic"
   ],
   "exports": "./mod.ts",
   "publish": {

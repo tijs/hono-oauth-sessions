@@ -3,12 +3,12 @@ import { getIronSession, sealData, unsealData } from "npm:iron-session@8.0.4";
 import { isValidHandle } from "npm:@atproto/syntax@0.4.0";
 
 import type {
+  HonoOAuthConfig,
   OAuthStorage,
   RefreshResult,
   SessionData,
   StoredOAuthSession,
   ValidationResult,
-  ValTownOAuthConfig,
 } from "./types.ts";
 import {
   ConfigurationError,
@@ -18,16 +18,16 @@ import {
 } from "./errors.ts";
 
 /**
- * Val Town optimized OAuth session manager
+ * Hono OAuth session manager
  *
  * Provides complete OAuth flow management with Iron Session integration,
  * mobile app support, and automatic token refresh.
  */
-export class ValTownOAuthSessions {
-  private readonly config: Required<ValTownOAuthConfig>;
+export class HonoOAuthSessions {
+  private readonly config: Required<HonoOAuthConfig>;
   private readonly storage: OAuthStorage;
 
-  constructor(config: ValTownOAuthConfig) {
+  constructor(config: HonoOAuthConfig) {
     // Validate required config
     if (!config.oauthClient) {
       throw new ConfigurationError("oauthClient is required");
@@ -48,7 +48,7 @@ export class ValTownOAuthSessions {
       sessionTtl: 60 * 60 * 24 * 7, // 7 days
       mobileScheme: "app://auth-callback",
       ...config,
-    } as Required<ValTownOAuthConfig>;
+    } as Required<HonoOAuthConfig>;
 
     this.storage = config.storage;
   }

@@ -16,7 +16,7 @@
  *
  * @example Basic usage with @tijs/oauth-client-deno
  * ```ts
- * import { ValTownOAuthSessions } from "@tijs/valtown-oauth-sessions";
+ * import { HonoOAuthSessions } from "@tijs/hono-oauth-sessions";
  * import { OAuthClient } from "@tijs/oauth-client-deno";
  *
  * // Create your storage implementation
@@ -38,7 +38,7 @@
  *   storage,
  * });
  *
- * const sessions = new ValTownOAuthSessions({
+ * const sessions = new HonoOAuthSessions({
  *   oauthClient,
  *   storage,
  *   cookieSecret: Deno.env.get("COOKIE_SECRET"),
@@ -53,7 +53,7 @@
  *
  * @example Using with custom OAuth client and storage
  * ```ts
- * import { ValTownOAuthSessions, type OAuthClientInterface, type OAuthStorage } from "@tijs/valtown-oauth-sessions";
+ * import { HonoOAuthSessions, type OAuthClientInterface, type OAuthStorage } from "@tijs/hono-oauth-sessions";
  *
  * class MyOAuthClient implements OAuthClientInterface {
  *   async authorize(handle: string, options?: { state?: string }): Promise<URL> {
@@ -77,7 +77,7 @@
  *   }
  * }
  *
- * const sessions = new ValTownOAuthSessions({
+ * const sessions = new HonoOAuthSessions({
  *   oauthClient: new MyOAuthClient(),
  *   storage: new MyStorage(),
  *   cookieSecret: Deno.env.get("COOKIE_SECRET"),
@@ -88,8 +88,9 @@
  * @module
  */
 
-export { ValTownOAuthSessions } from "./src/sessions.ts";
+export { HonoOAuthSessions } from "./src/sessions.ts";
 export type {
+  HonoOAuthConfig,
   MobileCallbackData,
   OAuthClientInterface,
   OAuthStorage,
@@ -97,6 +98,5 @@ export type {
   SessionInterface,
   StoredOAuthSession,
   ValidationResult,
-  ValTownOAuthConfig,
 } from "./src/types.ts";
 export * from "./src/errors.ts";

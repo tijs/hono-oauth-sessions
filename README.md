@@ -1,4 +1,4 @@
-# @tijs/valtown-oauth-sessions
+# @tijs/hono-oauth-sessions
 
 Storage-agnostic OAuth session management for AT Protocol applications. **Bring your own OAuth client and storage** - requires specific interfaces (see documentation).
 
@@ -15,7 +15,7 @@ Storage-agnostic OAuth session management for AT Protocol applications. **Bring 
 ## Installation
 
 ```bash
-deno add @tijs/valtown-oauth-sessions
+deno add @tijs/hono-oauth-sessions
 ```
 
 ## Quick Start
@@ -23,7 +23,7 @@ deno add @tijs/valtown-oauth-sessions
 ```typescript
 import { Hono } from "https://esm.sh/hono";
 import { OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.0";
-import { ValTownOAuthSessions } from "jsr:@tijs/valtown-oauth-sessions";
+import { HonoOAuthSessions } from "jsr:@tijs/hono-oauth-sessions";
 
 const app = new Hono();
 
@@ -51,7 +51,7 @@ const oauthClient = new OAuthClient({
 });
 
 // Set up session manager
-const sessions = new ValTownOAuthSessions({
+const sessions = new HonoOAuthSessions({
   oauthClient,
   storage, // Same storage instance
   cookieSecret: Deno.env.get("COOKIE_SECRET")!,
@@ -290,7 +290,7 @@ const oauthClient = new NodeOAuthClient({
 ### With Custom OAuth Client
 
 ```typescript
-import { type OAuthClientInterface, type SessionInterface } from "jsr:@tijs/valtown-oauth-sessions";
+import { type OAuthClientInterface, type SessionInterface } from "jsr:@tijs/hono-oauth-sessions";
 
 class MyCustomOAuthClient implements OAuthClientInterface {
   async authorize(handle: string, options?: { state?: string }): Promise<URL> {
@@ -347,7 +347,7 @@ app.get("/mobile/refresh-token", async (c) => {
 ## Configuration Options
 
 ```typescript
-interface ValTownOAuthConfig {
+interface HonoOAuthConfig {
   /** OAuth client instance - bring your own! */
   oauthClient: OAuthClientInterface;
 
@@ -390,7 +390,7 @@ interface OAuthStorage {
 
 ## API Reference
 
-### ValTownOAuthSessions
+### HonoOAuthSessions
 
 #### `startOAuth(handle: string, options?: { mobile?: boolean; codeChallenge?: string }): Promise<URL>`
 
@@ -420,7 +420,7 @@ import {
   MobileIntegrationError,
   OAuthFlowError,
   SessionError,
-} from "jsr:@tijs/valtown-oauth-sessions";
+} from "jsr:@tijs/hono-oauth-sessions";
 
 try {
   await sessions.validateSession(c);

@@ -73,9 +73,9 @@ export interface SessionInterface {
 }
 
 /**
- * Configuration options for ValTownOAuthSessions
+ * Configuration options for HonoOAuthSessions
  */
-export interface ValTownOAuthConfig {
+export interface HonoOAuthConfig {
   /** OAuth client instance - bring your own! */
   oauthClient: OAuthClientInterface;
 
