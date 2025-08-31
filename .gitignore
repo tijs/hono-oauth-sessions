@@ -1,6 +1,5 @@
 # Deno
 .deno/
-deno.lock
 
 # Node.js (if using any Node tools)
 node_modules/
