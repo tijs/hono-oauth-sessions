@@ -2,8 +2,14 @@ import { Context } from "https://esm.sh/hono";
 import { getIronSession, sealData, unsealData } from "npm:iron-session@8.0.4";
 import { isValidHandle } from "npm:@atproto/syntax@0.4.0";
 
-import { ValTownStorage } from "./storage.ts";
-import type { RefreshResult, SessionData, ValidationResult, ValTownOAuthConfig } from "./types.ts";
+import type {
+  OAuthStorage,
+  RefreshResult,
+  SessionData,
+  StoredOAuthSession,
+  ValidationResult,
+  ValTownOAuthConfig,
+} from "./types.ts";
 import {
   ConfigurationError,
   MobileIntegrationError,
@@ -19,12 +25,15 @@ import {
  */
 export class ValTownOAuthSessions {
   private readonly config: Required<ValTownOAuthConfig>;
-  private readonly storage: ValTownStorage;
+  private readonly storage: OAuthStorage;
 
-  constructor(config: ValTownOAuthConfig, sqlite?: any) {
+  constructor(config: ValTownOAuthConfig) {
     // Validate required config
     if (!config.oauthClient) {
       throw new ConfigurationError("oauthClient is required");
+    }
+    if (!config.storage) {
+      throw new ConfigurationError("storage is required");
     }
     if (!config.cookieSecret) {
       throw new ConfigurationError("cookieSecret is required");
@@ -38,28 +47,11 @@ export class ValTownOAuthSessions {
       cookieName: "sid",
       sessionTtl: 60 * 60 * 24 * 7, // 7 days
       mobileScheme: "app://auth-callback",
-      mobileUserAgents: ["AnchorApp", "iPhone", "iPad", "Mobile"],
-      autoCleanup: true,
       ...config,
-    };
+    } as Required<ValTownOAuthConfig>;
 
-    // Initialize storage with provided sqlite instance or expect it to be passed later
-    if (sqlite) {
-      this.storage = new ValTownStorage(sqlite);
-    } else {
-      // Will be initialized when methods are called if sqlite is available globally
-      // This allows flexibility for different Val Town setups
-      this.storage = new ValTownStorage(null as any);
-    }
+    this.storage = config.storage;
   }
-
-  /**
-   * Update the SQLite instance (useful for delayed initialization)
-   */
-  updateSQLite(sqlite: any): void {
-    (this.storage as any).sqlite = sqlite;
-  }
-
 
   /**
    * Get Iron Session from request
@@ -136,15 +128,22 @@ export class ValTownOAuthSessions {
       const did = oauthSession.did;
 
       // Store OAuth session data
-      await this.storage.setOAuthSession(did, {
+      const sessionData: StoredOAuthSession = {
+        did,
         accessToken: oauthSession.accessToken,
         refreshToken: oauthSession.refreshToken,
         handle: oauthSession.handle,
-        // Extract additional data if available on the session
+        displayName: undefined,
+        avatar: undefined,
+        pdsUrl: undefined,
         expiresAt: oauthSession.timeUntilExpiry
           ? Date.now() + oauthSession.timeUntilExpiry
           : undefined,
-      });
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await this.storage.set(`oauth_session:${did}`, sessionData);
 
       // Create Iron Session
       const session = await this.getSession(c);
@@ -199,16 +198,11 @@ export class ValTownOAuthSessions {
       await session.save();
 
       // Get stored OAuth data
-      const oauthData = await this.storage.getOAuthSession(session.did);
+      const oauthData = await this.storage.get<StoredOAuthSession>(`oauth_session:${session.did}`);
       if (!oauthData) {
         // Clean up invalid session
         await session.destroy();
         return { valid: false };
-      }
-
-      // Cleanup if enabled
-      if (this.config.autoCleanup) {
-        await this.storage.cleanup();
       }
 
       return {
@@ -246,7 +240,9 @@ export class ValTownOAuthSessions {
       }
 
       // Get stored OAuth session
-      const oauthData = await this.storage.getOAuthSession(sessionData.did);
+      const oauthData = await this.storage.get<StoredOAuthSession>(
+        `oauth_session:${sessionData.did}`,
+      );
       if (!oauthData) {
         return {
           success: false,
@@ -274,7 +270,11 @@ export class ValTownOAuthSessions {
             };
 
             // Update stored session
-            await this.storage.setOAuthSession(sessionData.did, refreshedData);
+            const updatedSessionData: StoredOAuthSession = {
+              ...refreshedData,
+              updatedAt: Date.now(),
+            };
+            await this.storage.set(`oauth_session:${sessionData.did}`, updatedSessionData);
           } catch {
             // Refresh failed, use existing tokens
           }
@@ -324,7 +324,7 @@ export class ValTownOAuthSessions {
 
       if (session.did) {
         // Clean up OAuth session data
-        await this.storage.deleteOAuthSession(session.did);
+        await this.storage.delete(`oauth_session:${session.did}`);
       }
 
       // Destroy Iron Session
@@ -339,30 +339,13 @@ export class ValTownOAuthSessions {
   /**
    * Get stored OAuth session data for API calls
    */
-  async getStoredOAuthData(did: string): Promise<
-    {
-      accessToken: string;
-      refreshToken?: string;
-      handle?: string;
-      displayName?: string;
-      avatar?: string;
-      pdsUrl?: string;
-      expiresAt?: number;
-    } | null
-  > {
+  async getStoredOAuthData(did: string): Promise<StoredOAuthSession | null> {
     try {
-      return await this.storage.getOAuthSession(did);
+      return await this.storage.get<StoredOAuthSession>(`oauth_session:${did}`);
     } catch (error) {
       throw new SessionError(
         `Failed to get OAuth session: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }
-
-  /**
-   * Manual cleanup of expired sessions
-   */
-  async cleanup(): Promise<void> {
-    await this.storage.cleanup();
   }
 }

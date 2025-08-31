@@ -1,17 +1,16 @@
 # @tijs/valtown-oauth-sessions
 
-Val Town optimized OAuth session management for AT Protocol applications. **Bring your own OAuth client** - works with any compatible OAuth implementation including `@tijs/oauth-client-deno`, `@atproto/oauth-client-node`, or custom clients.
+Storage-agnostic OAuth session management for AT Protocol applications. **Bring your own OAuth client and storage** - requires specific interfaces (see documentation).
 
 ## Features
 
-- 🔐 **Complete OAuth Flow Management** - Start, callback, refresh, logout
-- 🔌 **Bring Your Own OAuth Client** - Works with any compatible OAuth implementation
-- 📱 **Mobile App WebView Integration** - Custom URL schemes and mobile detection
+- 🔐 **OAuth Flow Management** - Authorization code flow with PKCE support
+- 🔌 **Bring Your Own OAuth Client** - Requires specific interface (see OAuthClientInterface)
+- 🗄️ **Bring Your Own Storage** - Implements simple key-value storage interface
+- 📱 **Mobile App Support** - Generates mobile callback URLs with encrypted tokens
 - 🍪 **Iron Session Cookies** - Secure session persistence with automatic expiration
-- 🗄️ **SQLite Storage** - Optimized for Val Town's sqlite2 API format
-- 🔄 **Automatic Token Refresh** - Background token management (if supported by client)
-- 🧹 **Automatic Cleanup** - Expired session removal
-- 🎯 **Hono Framework Ready** - Built for Val Town's preferred web framework
+- 🔄 **Token Refresh Support** - Mobile token refresh when OAuth client supports it
+- 🎯 **Hono Integration** - Built for Hono web framework with Context-based API
 
 ## Installation
 
@@ -19,37 +18,53 @@ Val Town optimized OAuth session management for AT Protocol applications. **Brin
 deno add @tijs/valtown-oauth-sessions
 ```
 
-## Quick Start with @tijs/oauth-client-deno
+## Quick Start
 
 ```typescript
 import { Hono } from "https://esm.sh/hono";
-import { MemoryStorage, OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.0";
+import { OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.0";
 import { ValTownOAuthSessions } from "jsr:@tijs/valtown-oauth-sessions";
-import { sqlite } from "https://esm.town/v/std/sqlite2";
 
 const app = new Hono();
 
-// Set up OAuth client
+// Create your storage implementation
+const storage = {
+  async get<T>(key: string): Promise<T | null> {
+    // Your storage get logic (SQLite, Redis, etc.)
+    return null; // Replace with actual implementation
+  },
+
+  async set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void> {
+    // Your storage set logic with optional TTL
+  },
+
+  async delete(key: string): Promise<void> {
+    // Your storage delete logic
+  },
+};
+
+// Set up OAuth client with the same storage
 const oauthClient = new OAuthClient({
   clientId: "https://myapp.com/client-metadata.json",
   redirectUri: "https://myapp.com/oauth/callback",
-  storage: new MemoryStorage(), // Use any storage adapter
+  storage, // Same storage instance
 });
 
 // Set up session manager
 const sessions = new ValTownOAuthSessions({
   oauthClient,
+  storage, // Same storage instance
   cookieSecret: Deno.env.get("COOKIE_SECRET")!,
   baseUrl: "https://myapp.com",
-}, sqlite);
+});
 
 // OAuth routes
 app.get("/login", async (c) => {
-  const { handle } = c.req.query();
+  const handle = c.req.query("handle");
   if (!handle) return c.text("Missing handle", 400);
 
   const authUrl = await sessions.startOAuth(handle);
-  return c.redirect(authUrl);
+  return c.redirect(authUrl.toString());
 });
 
 app.get("/oauth/callback", async (c) => {
@@ -69,51 +84,207 @@ app.post("/api/logout", async (c) => {
 export default app;
 ```
 
-## Using with Other OAuth Clients
+## Storage Implementations
 
-The session manager works with any OAuth client that implements the interface. **As of @tijs/oauth-client-deno v1.0.0, both Deno and Node.js clients now have compatible interfaces!**
+### Val Town SQLite Storage
+
+```typescript
+import { sqlite } from "https://esm.town/v/std/sqlite2";
+
+class ValTownSQLiteStorage {
+  private initialized = false;
+
+  async init() {
+    if (this.initialized) return;
+
+    await sqlite.execute({
+      sql: `CREATE TABLE IF NOT EXISTS oauth_storage (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        expires_at INTEGER,
+        created_at INTEGER DEFAULT (unixepoch() * 1000)
+      )`,
+      args: [],
+    });
+
+    this.initialized = true;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    await this.init();
+
+    const now = Date.now();
+    const result = await sqlite.execute({
+      sql:
+        "SELECT value FROM oauth_storage WHERE key = ? AND (expires_at IS NULL OR expires_at > ?)",
+      args: [key, now],
+    });
+
+    if (result.rows.length === 0) return null;
+
+    try {
+      return JSON.parse(result.rows[0][0] as string) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void> {
+    await this.init();
+
+    const expiresAt = options?.ttl ? Date.now() + (options.ttl * 1000) : null;
+
+    await sqlite.execute({
+      sql: "INSERT OR REPLACE INTO oauth_storage (key, value, expires_at) VALUES (?, ?, ?)",
+      args: [key, JSON.stringify(value), expiresAt],
+    });
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.init();
+
+    await sqlite.execute({
+      sql: "DELETE FROM oauth_storage WHERE key = ?",
+      args: [key],
+    });
+  }
+}
+
+const storage = new ValTownSQLiteStorage();
+```
+
+### Redis Storage
+
+```typescript
+class RedisStorage {
+  constructor(private redis: any) {}
+
+  async get<T>(key: string): Promise<T | null> {
+    const value = await this.redis.get(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  async set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void> {
+    const serialized = JSON.stringify(value);
+    if (options?.ttl) {
+      await this.redis.setex(key, options.ttl, serialized);
+    } else {
+      await this.redis.set(key, serialized);
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+}
+```
+
+### Memory Storage
+
+```typescript
+class MemoryStorage {
+  private data = new Map<string, { value: any; expiresAt?: number }>();
+
+  async get<T>(key: string): Promise<T | null> {
+    const entry = this.data.get(key);
+    if (!entry) return null;
+
+    if (entry.expiresAt && entry.expiresAt <= Date.now()) {
+      this.data.delete(key);
+      return null;
+    }
+
+    return entry.value;
+  }
+
+  async set<T>(key: string, value: T, options?: { ttl?: number }): Promise<void> {
+    const entry: any = { value };
+    if (options?.ttl) {
+      entry.expiresAt = Date.now() + (options.ttl * 1000);
+    }
+    this.data.set(key, entry);
+  }
+
+  async delete(key: string): Promise<void> {
+    this.data.delete(key);
+  }
+}
+```
+
+## Storage Cleanup
+
+The session manager doesn't provide automatic cleanup functionality. Instead, implement cleanup in your storage layer:
+
+### TTL-based Cleanup (Recommended)
+
+Most storage backends support TTL natively:
+
+- **Redis**: Automatic expiration with `SETEX`
+- **Val Town SQLite**: Use TTL in queries (see example above)
+- **Memory**: Check expiration on access (see example above)
+
+### Manual Cleanup Jobs
+
+For storage backends without TTL support, run periodic cleanup:
+
+```typescript
+// Example cleanup job for SQLite
+async function cleanupExpiredSessions() {
+  const now = Date.now();
+  await sqlite.execute({
+    sql: "DELETE FROM oauth_storage WHERE expires_at IS NOT NULL AND expires_at <= ?",
+    args: [now],
+  });
+}
+
+// Run cleanup every hour
+setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+```
+
+### Storage Key Patterns
+
+The session manager uses these key patterns:
+
+- `oauth_session:{did}` - OAuth session data for users
+- OAuth clients may use different patterns for state/PKCE data
+
+Consider implementing pattern-based cleanup if needed:
+
+```typescript
+// Example: Clean all session keys
+async function cleanupAllSessions() {
+  // Implementation depends on your storage backend
+  // Some support pattern deletion, others require key enumeration
+}
+```
+
+## Using with Different OAuth Clients
+
+### With @tijs/oauth-client-deno
+
+```typescript
+import { OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.0";
+
+const oauthClient = new OAuthClient({
+  clientId: "https://myapp.com/client-metadata.json",
+  redirectUri: "https://myapp.com/oauth/callback",
+  storage, // Your storage implementation
+});
+```
 
 ### With @atproto/oauth-client-node
 
-Now works directly without any adapter:
-
 ```typescript
 import { NodeOAuthClient } from "@atproto/oauth-client-node";
-import { ValTownOAuthSessions } from "jsr:@tijs/valtown-oauth-sessions";
 
-const nodeClient = new NodeOAuthClient({
+const oauthClient = new NodeOAuthClient({
   clientMetadata: {
     client_id: "https://myapp.com/client-metadata.json",
     redirect_uris: ["https://myapp.com/oauth/callback"],
   },
+  stateStore: storage, // Your storage for state
+  sessionStore: storage, // Your storage for sessions (can be different)
 });
-
-const sessions = new ValTownOAuthSessions({
-  oauthClient: nodeClient, // Direct usage - no adapter needed!
-  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
-  baseUrl: "https://myapp.com",
-}, sqlite);
-```
-
-### With @tijs/oauth-client-deno v1.0.0+
-
-Works directly:
-
-```typescript
-import { MemoryStorage, OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.0";
-import { ValTownOAuthSessions } from "jsr:@tijs/valtown-oauth-sessions";
-
-const denoClient = new OAuthClient({
-  clientId: "https://myapp.com/client-metadata.json",
-  redirectUri: "https://myapp.com/oauth/callback",
-  storage: new MemoryStorage(),
-});
-
-const sessions = new ValTownOAuthSessions({
-  oauthClient: denoClient, // Direct usage!
-  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
-  baseUrl: "https://myapp.com",
-}, sqlite);
 ```
 
 ### With Custom OAuth Client
@@ -124,34 +295,22 @@ import { type OAuthClientInterface, type SessionInterface } from "jsr:@tijs/valt
 class MyCustomOAuthClient implements OAuthClientInterface {
   async authorize(handle: string, options?: { state?: string }): Promise<URL> {
     // Your OAuth authorization logic
-    const authUrl = new URL("https://authorization-server.com/oauth/authorize");
-    authUrl.searchParams.set("client_id", "your-client-id");
-    authUrl.searchParams.set("redirect_uri", "your-redirect-uri");
-    if (options?.state) authUrl.searchParams.set("state", options.state);
-    return authUrl;
+    return new URL("https://authorization-server.com/oauth/authorize");
   }
 
-  async callback(
-    params: URLSearchParams,
-  ): Promise<{ session: SessionInterface; state?: string | null }> {
+  async callback(params: URLSearchParams): Promise<{
+    session: SessionInterface;
+    state?: string | null;
+  }> {
     // Your OAuth callback logic
-    const code = params.get("code");
-    const state = params.get("state");
-    const tokens = await this.exchangeCodeForTokens(code);
-
-    return {
-      session: {
-        did: tokens.sub,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        handle: tokens.handle,
-        timeUntilExpiry: tokens.expires_in * 1000,
-      },
+    const session: SessionInterface = {
+      did: "did:plc:example",
+      accessToken: "access_token_here",
+      refreshToken: "refresh_token_here",
+      handle: "user.bsky.social",
     };
-  }
 
-  private async exchangeCodeForTokens(code: string) {
-    // Your token exchange implementation
+    return { session, state: params.get("state") };
   }
 }
 ```
@@ -169,7 +328,7 @@ app.post("/api/auth/mobile-start", async (c) => {
     codeChallenge: code_challenge,
   });
 
-  return c.json({ authUrl });
+  return c.json({ authUrl: authUrl.toString() });
 });
 ```
 
@@ -185,74 +344,15 @@ app.get("/mobile/refresh-token", async (c) => {
 });
 ```
 
-### Mobile App Setup
-
-Configure your mobile app to:
-
-1. Set User-Agent to include your app name (e.g., "MyApp/1.0")
-2. Register custom URL scheme (e.g., `myapp://auth-callback`)
-3. Handle the callback URL with session tokens
-
-```swift
-// iOS URL scheme handling
-func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-    if url.scheme == "myapp" && url.host == "auth-callback" {
-        let params = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
-        let sessionToken = params?.first(where: { $0.name == "session_token" })?.value
-        let did = params?.first(where: { $0.name == "did" })?.value
-        
-        // Store tokens securely and update app state
-        return true
-    }
-    return false
-}
-```
-
-## OAuth Client Interface
-
-To use your own OAuth client, implement this simple interface:
-
-```typescript
-interface OAuthClientInterface {
-  /** Start OAuth authorization flow */
-  authorize(handle: string, options?: { state?: string }): Promise<string>;
-
-  /** Handle OAuth callback and exchange code for tokens */
-  callback(params: { code: string; state?: string }): Promise<{
-    session: SessionInterface;
-  }>;
-}
-
-interface SessionInterface {
-  /** User's DID */
-  did: string;
-
-  /** Access token for API calls */
-  accessToken: string;
-
-  /** Refresh token (optional) */
-  refreshToken?: string;
-
-  /** Handle/username (optional) */
-  handle?: string;
-
-  /** Time until token expires in milliseconds (optional) */
-  timeUntilExpiry?: number;
-
-  /** Make authenticated request (optional) */
-  makeRequest?(method: string, url: string, options?: any): Promise<Response>;
-
-  /** Refresh tokens (optional) */
-  refresh?(): Promise<SessionInterface>;
-}
-```
-
 ## Configuration Options
 
 ```typescript
 interface ValTownOAuthConfig {
   /** OAuth client instance - bring your own! */
   oauthClient: OAuthClientInterface;
+
+  /** Storage instance for OAuth session data */
+  storage: OAuthStorage;
 
   /** Secret for Iron Session encryption */
   cookieSecret: string;
@@ -268,12 +368,23 @@ interface ValTownOAuthConfig {
 
   /** Mobile URL scheme (default: "app://auth-callback") */
   mobileScheme?: string;
+}
+```
 
-  /** Mobile User-Agent patterns for detection */
-  mobileUserAgents?: string[];
+## OAuth Storage Interface
 
-  /** Auto-cleanup expired sessions (default: true) */
-  autoCleanup?: boolean;
+To create your own storage implementation:
+
+```typescript
+interface OAuthStorage {
+  /** Retrieve a value from storage */
+  get<T = unknown>(key: string): Promise<T | null>;
+
+  /** Store a value in storage with optional TTL */
+  set<T = unknown>(key: string, value: T, options?: { ttl?: number }): Promise<void>;
+
+  /** Delete a value from storage */
+  delete(key: string): Promise<void>;
 }
 ```
 
@@ -281,7 +392,7 @@ interface ValTownOAuthConfig {
 
 ### ValTownOAuthSessions
 
-#### `startOAuth(handle: string, options?: { mobile?: boolean; codeChallenge?: string }): Promise<string>`
+#### `startOAuth(handle: string, options?: { mobile?: boolean; codeChallenge?: string }): Promise<URL>`
 
 Start OAuth flow for a given handle. Returns authorization URL.
 
@@ -300,19 +411,6 @@ Refresh mobile session token from Authorization header.
 #### `logout(c: Context): Promise<void>`
 
 Destroy session and clean up stored data.
-
-#### `cleanup(): Promise<void>`
-
-Manually clean up expired sessions.
-
-## Storage
-
-The package automatically creates two SQLite tables:
-
-- `oauth_sessions` - OAuth session data (tokens, profile info)
-- `iron_session_storage` - Iron Session cookie data
-
-Tables are created automatically using Val Town's sqlite2 API format.
 
 ## Error Handling
 

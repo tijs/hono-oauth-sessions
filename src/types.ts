@@ -1,6 +1,27 @@
 // Types only - no imports needed
 
 /**
+ * Storage interface for OAuth data persistence
+ * Compatible with @tijs/oauth-client-deno and similar clients
+ */
+export interface OAuthStorage {
+  /**
+   * Retrieve a value from storage
+   */
+  get<T = unknown>(key: string): Promise<T | null>;
+
+  /**
+   * Store a value in storage with optional TTL
+   */
+  set<T = unknown>(key: string, value: T, options?: { ttl?: number }): Promise<void>;
+
+  /**
+   * Delete a value from storage
+   */
+  delete(key: string): Promise<void>;
+}
+
+/**
  * Generic OAuth client interface - bring your own client!
  * Compatible with @tijs/oauth-client-deno v1.0.0+, @atproto/oauth-client-node, and similar clients
  */
@@ -58,6 +79,9 @@ export interface ValTownOAuthConfig {
   /** OAuth client instance - bring your own! */
   oauthClient: OAuthClientInterface;
 
+  /** Storage instance for OAuth session data */
+  storage: OAuthStorage;
+
   /** Secret for Iron Session cookie encryption */
   cookieSecret: string;
 
@@ -72,12 +96,6 @@ export interface ValTownOAuthConfig {
 
   /** Mobile app custom URL scheme (default: "app://auth-callback") */
   mobileScheme?: string;
-
-  /** User agent string to detect mobile apps (default: includes common patterns) */
-  mobileUserAgents?: string[];
-
-  /** Cleanup expired sessions automatically (default: true) */
-  autoCleanup?: boolean;
 }
 
 /**

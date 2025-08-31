@@ -1,7 +1,7 @@
 {
   "name": "@tijs/valtown-oauth-sessions",
   "version": "0.1.0",
-  "description": "Val Town optimized OAuth session management for AT Protocol - Iron Session + Hono + SQLite integration",
+  "description": "Storage-agnostic OAuth session management for AT Protocol - bring your own OAuth client and storage",
   "license": "MIT",
   "repository": {
     "type": "git",
