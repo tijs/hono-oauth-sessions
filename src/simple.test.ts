@@ -8,16 +8,18 @@ import type { OAuthClientInterface, OAuthStorage, SessionInterface } from "./typ
 class MockStorage implements OAuthStorage {
   private data = new Map<string, any>();
 
-  async get<T>(key: string): Promise<T | null> {
-    return this.data.get(key) || null;
+  get<T>(key: string): Promise<T | null> {
+    return Promise.resolve(this.data.get(key) || null);
   }
 
-  async set<T>(key: string, value: T, _options?: { ttl?: number }): Promise<void> {
+  set<T>(key: string, value: T, _options?: { ttl?: number }): Promise<void> {
     this.data.set(key, value);
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.data.delete(key);
+    return Promise.resolve();
   }
 
   // Test helpers
@@ -35,21 +37,21 @@ class MockOAuthClient implements OAuthClientInterface {
   public mockAuthUrl = new URL("https://oauth.example.com/authorize?code=123");
   public shouldFailAuthorize = false;
 
-  async authorize(handle: string, options?: { state?: string }): Promise<URL> {
+  authorize(handle: string, options?: { state?: string }): Promise<URL> {
     this.lastAuthorizeCall = { handle, options };
 
     if (this.shouldFailAuthorize) {
       throw new Error("OAuth authorization failed");
     }
 
-    return this.mockAuthUrl;
+    return Promise.resolve(this.mockAuthUrl);
   }
 
-  async callback(_params: URLSearchParams): Promise<{
+  callback(_params: URLSearchParams): Promise<{
     session: SessionInterface;
     state?: string | null;
   }> {
-    return {
+    return Promise.resolve({
       session: {
         did: "did:plc:test123",
         accessToken: "access_token_123",
@@ -57,7 +59,7 @@ class MockOAuthClient implements OAuthClientInterface {
         handle: "test.bsky.social",
         timeUntilExpiry: 3600000,
       },
-    };
+    });
   }
 
   reset() {
