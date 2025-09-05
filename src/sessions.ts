@@ -183,7 +183,7 @@ export class HonoOAuthSessions {
   }
 
   /**
-   * Validate session and return user info
+   * Validate session and return user info with automatic token refresh
    */
   async validateSession(c: Context): Promise<ValidationResult> {
     try {
@@ -203,6 +203,62 @@ export class HonoOAuthSessions {
         // Clean up invalid session
         await session.destroy();
         return { valid: false };
+      }
+
+      // Check if tokens need refreshing and refresh them automatically
+      try {
+        // Check if token is expired (within 5 minutes of expiry)
+        const isExpired = oauthData.expiresAt &&
+          (Date.now() + (5 * 60 * 1000) >= oauthData.expiresAt);
+
+        if (isExpired && oauthData.refreshToken && (this.config.oauthClient as any).refresh) {
+          console.log("Token is expired, refreshing for user:", session.did);
+
+          // Create a session-like object that matches SessionInterface
+          const sessionForRefresh = {
+            did: oauthData.did,
+            accessToken: oauthData.accessToken,
+            refreshToken: oauthData.refreshToken,
+            handle: oauthData.handle,
+            timeUntilExpiry: oauthData.expiresAt
+              ? Math.max(0, oauthData.expiresAt - Date.now())
+              : 0,
+            // Add toJSON method if needed by the OAuth client
+            toJSON: () => ({
+              did: oauthData.did,
+              accessToken: oauthData.accessToken,
+              refreshToken: oauthData.refreshToken,
+              handle: oauthData.handle,
+              dpopPrivateKeyJWK: {},
+              dpopPublicKeyJWK: {},
+              pdsUrl: oauthData.pdsUrl || "",
+              tokenExpiresAt: oauthData.expiresAt || Date.now() + (60 * 60 * 1000),
+            }),
+          };
+
+          // Use the OAuth client's refresh method if available
+          const refreshedSession = await (this.config.oauthClient as any).refresh(
+            sessionForRefresh,
+          );
+
+          // Update stored session with new tokens
+          const updatedSessionData: StoredOAuthSession = {
+            ...oauthData,
+            accessToken: refreshedSession.accessToken,
+            refreshToken: refreshedSession.refreshToken || oauthData.refreshToken,
+            expiresAt: refreshedSession.timeUntilExpiry
+              ? Date.now() + refreshedSession.timeUntilExpiry
+              : undefined,
+            updatedAt: Date.now(),
+          };
+
+          await this.storage.set(`oauth_session:${session.did}`, updatedSessionData);
+          console.log("Token refresh successful for user:", session.did);
+        }
+      } catch (refreshError) {
+        console.error("Token refresh failed during session validation:", refreshError);
+        // Don't fail the session validation if refresh fails - let the client handle it
+        // The session might still be usable for a short time
       }
 
       return {
@@ -250,51 +306,45 @@ export class HonoOAuthSessions {
         };
       }
 
-      try {
-        // Try to refresh tokens if the session supports it
-        // This depends on the OAuth client implementation
-        let refreshedData = oauthData;
-
-        // Check if we have a refresh method available
-        // This would be provided by clients that support token refresh
-        if (oauthData.refreshToken && typeof (oauthData as any).refresh === "function") {
-          try {
-            const refreshedSession = await (oauthData as any).refresh();
-            refreshedData = {
-              ...oauthData,
-              accessToken: refreshedSession.accessToken,
-              refreshToken: refreshedSession.refreshToken,
-              expiresAt: refreshedSession.timeUntilExpiry
-                ? Date.now() + refreshedSession.timeUntilExpiry
-                : oauthData.expiresAt,
-            };
-
-            // Update stored session
-            const updatedSessionData: StoredOAuthSession = {
-              ...refreshedData,
-              updatedAt: Date.now(),
-            };
-            await this.storage.set(`oauth_session:${sessionData.did}`, updatedSessionData);
-          } catch {
-            // Refresh failed, use existing tokens
-          }
-        }
-
-        const newSealedToken = await sealData(
-          { did: sessionData.did },
-          { password: this.config.cookieSecret },
-        );
-
-        return {
-          success: true,
-          sessionToken: newSealedToken,
-          did: sessionData.did,
-          accessToken: refreshedData.accessToken,
-          refreshToken: refreshedData.refreshToken,
-          expiresAt: refreshedData.expiresAt,
+      // Try to refresh tokens using the OAuth client
+      if (oauthData.refreshToken && (this.config.oauthClient as any).refresh) {
+        // Create a session-like object that matches SessionInterface
+        const sessionForRefresh = {
+          did: oauthData.did,
+          accessToken: oauthData.accessToken,
+          refreshToken: oauthData.refreshToken,
+          handle: oauthData.handle,
+          timeUntilExpiry: oauthData.expiresAt ? Math.max(0, oauthData.expiresAt - Date.now()) : 0,
+          // Add toJSON method if needed by the OAuth client
+          toJSON: () => ({
+            did: oauthData.did,
+            accessToken: oauthData.accessToken,
+            refreshToken: oauthData.refreshToken,
+            handle: oauthData.handle,
+            dpopPrivateKeyJWK: {},
+            dpopPublicKeyJWK: {},
+            pdsUrl: oauthData.pdsUrl || "",
+            tokenExpiresAt: oauthData.expiresAt || Date.now() + (60 * 60 * 1000),
+          }),
         };
-      } catch (_refreshError) {
-        // Fallback to cached tokens
+
+        // Use the OAuth client's refresh method
+        const refreshedSession = await (this.config.oauthClient as any).refresh(sessionForRefresh);
+
+        // Update stored session with new tokens
+        const updatedSessionData: StoredOAuthSession = {
+          ...oauthData,
+          accessToken: refreshedSession.accessToken,
+          refreshToken: refreshedSession.refreshToken || oauthData.refreshToken,
+          expiresAt: refreshedSession.timeUntilExpiry
+            ? Date.now() + refreshedSession.timeUntilExpiry
+            : undefined,
+          updatedAt: Date.now(),
+        };
+
+        await this.storage.set(`oauth_session:${sessionData.did}`, updatedSessionData);
+
+        // Create new sealed token for mobile client
         const newSealedToken = await sealData(
           { did: sessionData.did },
           { password: this.config.cookieSecret },
@@ -304,7 +354,24 @@ export class HonoOAuthSessions {
           success: true,
           sessionToken: newSealedToken,
           did: sessionData.did,
-          error: "Token refresh failed, using cached tokens",
+          accessToken: refreshedSession.accessToken,
+          refreshToken: refreshedSession.refreshToken,
+          expiresAt: Date.now() + (refreshedSession.timeUntilExpiry || 0),
+        };
+      } else {
+        // No refresh token or refresh method available
+        const newSealedToken = await sealData(
+          { did: sessionData.did },
+          { password: this.config.cookieSecret },
+        );
+
+        return {
+          success: true,
+          sessionToken: newSealedToken,
+          did: sessionData.did,
+          accessToken: oauthData.accessToken,
+          refreshToken: oauthData.refreshToken,
+          expiresAt: oauthData.expiresAt,
         };
       }
     } catch (error) {

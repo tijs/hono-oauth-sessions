@@ -5,9 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-09-05
+
+### Fixed
+
+- **CRITICAL**: Fixed token refresh logic in `validateSession` method - now properly refreshes expired tokens automatically during session validation
+- **CRITICAL**: Fixed mobile token refresh endpoint to use OAuth client's `refresh()` method instead of incorrectly trying to call methods on stored data objects
+- **CRITICAL**: Removed problematic fallback behavior in mobile token refresh that bypassed actual token refresh when failures occurred
+
+### Changed
+
+- Session validation now includes automatic token refresh when tokens are within 5 minutes of expiry
+- Mobile token refresh failures now properly fail instead of silently returning stale tokens
+- Improved error handling and logging for token refresh operations
+
 ## [0.1.0] - 2025-08-31
 
 ### Added
+
 - Initial release of storage-agnostic OAuth session management for AT Protocol applications
 - OAuth Flow Management with authorization code flow and PKCE support
 - Bring Your Own OAuth Client architecture with `OAuthClientInterface`
@@ -22,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript support with strict type checking
 
 ### Features
+
 - 🔐 OAuth Flow Management - Authorization code flow with PKCE support
 - 🔌 Bring Your Own OAuth Client - Requires specific interface implementation
 - 🗄️ Bring Your Own Storage - Simple key-value storage interface
