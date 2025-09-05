@@ -266,7 +266,6 @@ export class HonoOAuthSessions {
         did: session.did,
         handle: oauthData.handle,
         displayName: oauthData.displayName,
-        // TODO: Return OAuth session if needed for API calls
       };
     } catch (error) {
       throw new SessionError(

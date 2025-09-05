@@ -84,6 +84,39 @@ app.post("/api/logout", async (c) => {
 export default app;
 ```
 
+## Session TTL Configuration
+
+The session TTL (time-to-live) determines how long users stay logged in. The default is 7 days, but you can customize this:
+
+```typescript
+// Short session (1 hour) - good for sensitive applications
+const sessions = new HonoOAuthSessions({
+  oauthClient,
+  storage,
+  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
+  baseUrl: "https://myapp.com",
+  sessionTtl: 60 * 60, // 1 hour
+});
+
+// Extended session (30 days) - good for convenience
+const sessions = new HonoOAuthSessions({
+  oauthClient,
+  storage,
+  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
+  baseUrl: "https://myapp.com",
+  sessionTtl: 60 * 60 * 24 * 30, // 30 days
+});
+
+// Custom session (12 hours)
+const sessions = new HonoOAuthSessions({
+  oauthClient,
+  storage,
+  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
+  baseUrl: "https://myapp.com",
+  sessionTtl: 60 * 60 * 12, // 12 hours
+});
+```
+
 ## Storage Implementations
 
 ### Val Town SQLite Storage
@@ -363,7 +396,11 @@ interface HonoOAuthConfig {
   /** Cookie name (default: "sid") */
   cookieName?: string;
 
-  /** Session TTL in seconds (default: 7 days) */
+  /**
+   * Session TTL in seconds (default: 7 days / 604800 seconds)
+   * Controls how long users stay logged in before needing to re-authenticate.
+   * Common values: 3600 (1h), 86400 (1d), 604800 (7d), 2592000 (30d)
+   */
   sessionTtl?: number;
 
   /** Mobile URL scheme (default: "app://auth-callback") */

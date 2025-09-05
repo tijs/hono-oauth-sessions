@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-09-05
+
+### Enhanced
+
+- **Session TTL Documentation**: Added comprehensive documentation for configurable session TTL with examples for 1 hour, 12 hours, and 30 day sessions
+- **Configuration Guide**: Added detailed "Session TTL Configuration" section to README with practical examples
+
+### Fixed
+
+- **Security**: Removed problematic TODO comment that could have led to exposing OAuth tokens in session validation responses
+
+### Improved
+
+- **Developer Experience**: Better discoverability of TTL configuration options through enhanced JSDoc and README examples
+- **Code Quality**: Cleaned up technical debt in session validation logic
+
 ## [0.1.3] - 2025-09-05
 
 ### Added

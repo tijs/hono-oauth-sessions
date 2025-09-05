@@ -91,7 +91,17 @@ export interface HonoOAuthConfig {
   /** Cookie name for Iron Session (default: "sid") */
   cookieName?: string;
 
-  /** Session TTL in seconds (default: 7 days) */
+  /**
+   * Session TTL (time-to-live) in seconds for Iron Session cookies.
+   * Controls how long users stay logged in before needing to re-authenticate.
+   * @default 604800 (7 days)
+   * @example
+   * // 1 hour session
+   * sessionTtl: 60 * 60
+   *
+   * // 30 day session
+   * sessionTtl: 60 * 60 * 24 * 30
+   */
   sessionTtl?: number;
 
   /** Mobile app custom URL scheme (default: "app://auth-callback") */
