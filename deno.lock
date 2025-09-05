@@ -92,5 +92,12 @@
     "https://esm.sh/hono@4.9.5/denonext/router/reg-exp-router.mjs": "0e8e44608e43fce77c8bc6d2ee0ef0547e33386c64975d1c1440a17b9ab201fc",
     "https://esm.sh/hono@4.9.5/denonext/router/smart-router.mjs": "8cfc8129be73d3d23ef867a8e77679abbd388911a4bc9e2c347c47a6fef4a945",
     "https://esm.sh/hono@4.9.5/denonext/router/trie-router.mjs": "59ee585dc8d070c71e466234c14ccfae0fd8a602b5edf691b0ffa0a13ccd6261"
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@hono/hono@^4.9.6",
+      "npm:@atproto/syntax@0.4.0",
+      "npm:iron-session@8.0.4"
+    ]
   }
 }
