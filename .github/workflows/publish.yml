@@ -1,0 +1,29 @@
+name: Publish to JSR
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # Required for provenance generation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: Verify code quality and run tests
+        run: deno task ci
+
+      - name: Publish to JSR
+        run: deno publish

@@ -433,6 +433,25 @@ try {
 }
 ```
 
+## Contributing & Development
+
+This project uses automated publishing to JSR via GitHub Actions. When you push a version tag (e.g., `v0.1.2`), the workflow will automatically:
+
+1. Run code quality checks (`deno task ci`)
+2. Run all tests
+3. Publish to JSR if everything passes
+
+### Publishing a New Version
+
+```bash
+# Update version in deno.json
+# Update CHANGELOG.md
+git add .
+git commit -m "chore: release v0.1.2"
+git tag v0.1.2
+git push --tags
+```
+
 ## License
 
 MIT © [Tijs](https://github.com/tijs)

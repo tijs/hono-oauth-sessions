@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2025-09-05
+
+### Added
+
+- **GitHub Actions Workflow**: Automated publishing to JSR on version tags
+- **Development Documentation**: Added contributing section to README with publishing instructions
+- **CI Pipeline**: Automated code quality checks (formatting, linting, type checking, and tests) before publishing
+
+### Changed
+
+- **Development Process**: New releases now automatically publish to JSR when version tags are pushed
+- **Quality Assurance**: All releases now go through automated CI pipeline before publishing
+
 ## [0.1.1] - 2025-09-05
 
 ### Fixed
