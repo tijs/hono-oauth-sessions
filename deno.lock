@@ -1,9 +1,16 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@hono/hono@*": "4.9.6",
+    "jsr:@hono/hono@^4.9.6": "4.9.6",
     "npm:@atproto/syntax@0.4.0": "0.4.0",
     "npm:hono@*": "4.9.4",
     "npm:iron-session@8.0.4": "8.0.4"
+  },
+  "jsr": {
+    "@hono/hono@4.9.6": {
+      "integrity": "b85abb0013d167a290b1808d1d4d542dee269df31d4f47122023259fdd7e184b"
+    }
   },
   "npm": {
     "@atproto/syntax@0.4.0": {

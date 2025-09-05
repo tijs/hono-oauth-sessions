@@ -1,4 +1,4 @@
-import { Context } from "npm:hono";
+import { Context } from "jsr:@hono/hono@^4.9.6";
 import { getIronSession, sealData, unsealData } from "npm:iron-session@8.0.4";
 import { isValidHandle } from "npm:@atproto/syntax@0.4.0";
 
