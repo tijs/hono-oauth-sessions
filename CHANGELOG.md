@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Mobile Session Validation**: Added `validateMobileSession()` method to handle Bearer token authentication from mobile clients
 - **Dual Authentication Support**: Session validation now supports both cookie-based (web) and Bearer token (mobile) authentication patterns
 
-### Fixed  
+### Fixed
 
 - **Mobile API Integration**: Fixed OAuth integration between mobile clients and backend session validation
 - **Authentication Mismatch**: Resolved issue where mobile clients sent Bearer tokens but backend only accepted cookies
