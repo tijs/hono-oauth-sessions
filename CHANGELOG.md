@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2025-09-07
+
+### Fixed
+
+- **Mobile Token Refresh**: Fixed `oauthSession.getTokenInfo is not a function` error in mobile token refresh
+- **API Compatibility**: Removed incorrect method call that was specific to BookHive but not available in oauth-client-deno Session objects
+- **Token Management**: The oauth-client-deno `restore()` method already handles token refresh automatically, so no additional calls needed
+
 ## [0.2.0] - 2025-09-07
 
 ### 💥 BREAKING CHANGES

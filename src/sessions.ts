@@ -305,17 +305,13 @@ export class HonoOAuthSessions {
         };
       }
 
-      // BookHive pattern: Use OAuth client to restore session and auto-refresh tokens
-      // The OAuth client handles all token management internally
+      // Use OAuth client to restore session with automatic token refresh (if expired)
       if ((this.config.oauthClient as any).restore) {
         try {
           const oauthSession = await (this.config.oauthClient as any).restore(sessionData.did);
           if (oauthSession) {
-            // Use "auto" to automatically refresh tokens when needed (BookHive pattern)
-            await oauthSession.getTokenInfo("auto");
-
-            // Tokens are now refreshed server-side, no need to pass them to mobile
-            // Just return a new sealed session ID
+            // The oauth-client-deno restore() method already handles token refresh automatically
+            // Tokens are managed server-side, mobile just gets a new sealed session ID
             const newSealedToken = await sealData(
               { did: sessionData.did },
               { password: this.config.cookieSecret },
