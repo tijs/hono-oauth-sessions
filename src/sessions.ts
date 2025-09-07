@@ -275,6 +275,59 @@ export class HonoOAuthSessions {
   }
 
   /**
+   * Validate mobile session from Authorization header
+   *
+   * Similar to validateSession but handles Bearer token authentication
+   * instead of cookie-based sessions. Used for mobile API access.
+   *
+   * @param authHeader - Authorization header with Bearer token
+   * @returns ValidationResult with session information
+   * @throws MobileIntegrationError if token is invalid
+   */
+  async validateMobileSession(authHeader: string): Promise<ValidationResult> {
+    try {
+      if (!authHeader.startsWith("Bearer ")) {
+        throw new MobileIntegrationError("Invalid authorization header");
+      }
+
+      const sealedToken = authHeader.slice(7);
+
+      // Unseal token to get session data
+      const sessionData = await unsealData(sealedToken, {
+        password: this.config.cookieSecret,
+      }) as { did: string };
+
+      if (!sessionData.did) {
+        throw new MobileIntegrationError("Invalid session token");
+      }
+
+      // Get stored OAuth session
+      const oauthData = await this.storage.get<StoredOAuthSession>(
+        `session:${sessionData.did}`,
+      );
+      if (!oauthData) {
+        return { valid: false };
+      }
+
+      return {
+        valid: true,
+        did: sessionData.did,
+        handle: oauthData.handle,
+        displayName: oauthData.displayName,
+      };
+    } catch (error) {
+      if (error instanceof MobileIntegrationError) {
+        throw error;
+      }
+      throw new MobileIntegrationError(
+        `Mobile session validation failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  /**
    * Refresh mobile token
    */
   async refreshMobileToken(authHeader: string): Promise<RefreshResult> {

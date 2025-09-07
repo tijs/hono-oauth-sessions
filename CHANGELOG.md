@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-09-07
+
+### Added
+
+- **Mobile Session Validation**: Added `validateMobileSession()` method to handle Bearer token authentication from mobile clients
+- **Dual Authentication Support**: Session validation now supports both cookie-based (web) and Bearer token (mobile) authentication patterns
+
+### Fixed  
+
+- **Mobile API Integration**: Fixed OAuth integration between mobile clients and backend session validation
+- **Authentication Mismatch**: Resolved issue where mobile clients sent Bearer tokens but backend only accepted cookies
+
 ## [0.2.1] - 2025-09-07
 
 ### Fixed
