@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-09-07
+
+### 💥 BREAKING CHANGES
+
+- **Storage Key Pattern**: Changed from `oauth_session:{did}` to `session:{did}` for compatibility with oauth-client-deno
+- **Interface Extension**: `OAuthClientInterface` now requires `restore(sessionId: string)` method
+- **Data Migration Required**: Existing stored sessions will need to be migrated to new key pattern
+
+### Added
+
+- **Clean API Integration**: Added `getOAuthSession(did)` helper method for seamless OAuth session access
+- **oauth-client-deno Compatibility**: Storage keys now align with oauth-client-deno's expected patterns
+- **Enhanced Interface**: Extended `OAuthClientInterface` with `restore()` method for better type safety
+
+### Changed
+
+- **Storage Keys**: All OAuth session data now stored under `session:{did}` instead of `oauth_session:{did}`
+- **Library Integration**: Applications can now use `sessions.getOAuthSession(did)` for clean session access
+- **Documentation**: Updated README to reflect new storage key patterns
+
+### Migration Guide
+
+To upgrade from v0.1.x to v0.2.0:
+
+1. **Update Storage Keys**: Migrate existing `oauth_session:{did}` keys to `session:{did}`
+2. **Update OAuth Client**: Ensure your OAuth client implements the `restore(sessionId: string)` method
+3. **Use New API**: Replace manual session recreation with `sessions.getOAuthSession(did)`
+
 ## [0.1.4] - 2025-09-05
 
 ### Enhanced
