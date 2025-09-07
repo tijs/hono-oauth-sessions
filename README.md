@@ -278,7 +278,7 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
 
 The session manager uses these key patterns:
 
-- `oauth_session:{did}` - OAuth session data for users
+- `session:{did}` - OAuth session data for users (compatible with oauth-client-deno)
 - OAuth clients may use different patterns for state/PKCE data
 
 Consider implementing pattern-based cleanup if needed:

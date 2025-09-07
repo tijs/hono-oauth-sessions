@@ -40,6 +40,13 @@ export interface OAuthClientInterface {
     session: SessionInterface;
     state?: string | null;
   }>;
+
+  /**
+   * Restore a session from storage by session ID
+   * @param sessionId - Session identifier to restore
+   * @returns Promise resolving to restored session, or null if not found
+   */
+  restore(sessionId: string): Promise<SessionInterface | null>;
 }
 
 /**

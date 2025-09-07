@@ -143,7 +143,7 @@ export class HonoOAuthSessions {
         updatedAt: Date.now(),
       };
 
-      await this.storage.set(`oauth_session:${did}`, sessionData);
+      await this.storage.set(`session:${did}`, sessionData);
 
       // Create Iron Session
       const session = await this.getSession(c);
@@ -198,7 +198,7 @@ export class HonoOAuthSessions {
       await session.save();
 
       // Get stored OAuth data
-      const oauthData = await this.storage.get<StoredOAuthSession>(`oauth_session:${session.did}`);
+      const oauthData = await this.storage.get<StoredOAuthSession>(`session:${session.did}`);
       if (!oauthData) {
         // Clean up invalid session
         await session.destroy();
@@ -252,7 +252,7 @@ export class HonoOAuthSessions {
             updatedAt: Date.now(),
           };
 
-          await this.storage.set(`oauth_session:${session.did}`, updatedSessionData);
+          await this.storage.set(`session:${session.did}`, updatedSessionData);
           console.log("Token refresh successful for user:", session.did);
         }
       } catch (refreshError) {
@@ -296,7 +296,7 @@ export class HonoOAuthSessions {
 
       // Get stored OAuth session
       const oauthData = await this.storage.get<StoredOAuthSession>(
-        `oauth_session:${sessionData.did}`,
+        `session:${sessionData.did}`,
       );
       if (!oauthData) {
         return {
@@ -365,7 +365,7 @@ export class HonoOAuthSessions {
 
       if (session.did) {
         // Clean up OAuth session data
-        await this.storage.delete(`oauth_session:${session.did}`);
+        await this.storage.delete(`session:${session.did}`);
       }
 
       // Destroy Iron Session
@@ -382,11 +382,37 @@ export class HonoOAuthSessions {
    */
   async getStoredOAuthData(did: string): Promise<StoredOAuthSession | null> {
     try {
-      return await this.storage.get<StoredOAuthSession>(`oauth_session:${did}`);
+      return await this.storage.get<StoredOAuthSession>(`session:${did}`);
     } catch (error) {
       throw new SessionError(
         `Failed to get OAuth session: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+  }
+
+  /**
+   * Get a ready-to-use OAuth session with automatic token refresh
+   *
+   * This method provides a clean interface for applications to get OAuth sessions
+   * without needing to handle the complexity of session restoration and token refresh.
+   *
+   * @param did - User's DID to restore session for
+   * @returns Promise resolving to OAuth session, or null if not found
+   * @example
+   * ```ts
+   * const oauthSession = await sessions.getOAuthSession(userDid);
+   * if (oauthSession) {
+   *   const response = await oauthSession.fetch('/xrpc/com.atproto.repo.listRecords');
+   * }
+   * ```
+   */
+  async getOAuthSession(did: string): Promise<any | null> {
+    try {
+      // Use the OAuth client's restore method now that storage keys align
+      return await this.config.oauthClient.restore(did);
+    } catch (error) {
+      console.error(`Failed to restore OAuth session for ${did}:`, error);
+      return null;
     }
   }
 }

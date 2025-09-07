@@ -62,6 +62,17 @@ class MockOAuthClient implements OAuthClientInterface {
     });
   }
 
+  restore(_sessionId: string): Promise<SessionInterface | null> {
+    // Mock implementation - return a session for testing
+    return Promise.resolve({
+      did: "did:plc:test123",
+      accessToken: "mock_access_token",
+      refreshToken: "mock_refresh_token",
+      handle: "test.bsky.social",
+      timeUntilExpiry: 3600000,
+    });
+  }
+
   reset() {
     this.lastAuthorizeCall = null;
     this.shouldFailAuthorize = false;
@@ -201,7 +212,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
         updatedAt: Date.now(),
       };
 
-      await storage.set(`oauth_session:${testDid}`, sessionData);
+      await storage.set(`session:${testDid}`, sessionData);
 
       const result = await sessions.getStoredOAuthData(testDid);
 
@@ -218,14 +229,14 @@ describe("HonoOAuthSessions - Business Logic", () => {
 
     it("should delete session data on logout", async () => {
       const testDid = "did:plc:test123";
-      await storage.set(`oauth_session:${testDid}`, { test: "data" });
+      await storage.set(`session:${testDid}`, { test: "data" });
 
-      assertEquals(storage.hasKey(`oauth_session:${testDid}`), true);
+      assertEquals(storage.hasKey(`session:${testDid}`), true);
 
       // Note: This is testing the storage deletion logic, not full logout
-      await storage.delete(`oauth_session:${testDid}`);
+      await storage.delete(`session:${testDid}`);
 
-      assertEquals(storage.hasKey(`oauth_session:${testDid}`), false);
+      assertEquals(storage.hasKey(`session:${testDid}`), false);
     });
   });
 
