@@ -305,74 +305,49 @@ export class HonoOAuthSessions {
         };
       }
 
-      // Try to refresh tokens using the OAuth client
-      if (oauthData.refreshToken && (this.config.oauthClient as any).refresh) {
-        // Create a session-like object that matches SessionInterface
-        const sessionForRefresh = {
-          did: oauthData.did,
-          accessToken: oauthData.accessToken,
-          refreshToken: oauthData.refreshToken,
-          handle: oauthData.handle,
-          timeUntilExpiry: oauthData.expiresAt ? Math.max(0, oauthData.expiresAt - Date.now()) : 0,
-          // Add toJSON method if needed by the OAuth client
-          toJSON: () => ({
-            did: oauthData.did,
-            accessToken: oauthData.accessToken,
-            refreshToken: oauthData.refreshToken,
-            handle: oauthData.handle,
-            dpopPrivateKeyJWK: {},
-            dpopPublicKeyJWK: {},
-            pdsUrl: oauthData.pdsUrl || "",
-            tokenExpiresAt: oauthData.expiresAt || Date.now() + (60 * 60 * 1000),
-          }),
-        };
+      // BookHive pattern: Use OAuth client to restore session and auto-refresh tokens
+      // The OAuth client handles all token management internally
+      if ((this.config.oauthClient as any).restore) {
+        try {
+          const oauthSession = await (this.config.oauthClient as any).restore(sessionData.did);
+          if (oauthSession) {
+            // Use "auto" to automatically refresh tokens when needed (BookHive pattern)
+            await oauthSession.getTokenInfo("auto");
 
-        // Use the OAuth client's refresh method
-        const refreshedSession = await (this.config.oauthClient as any).refresh(sessionForRefresh);
+            // Tokens are now refreshed server-side, no need to pass them to mobile
+            // Just return a new sealed session ID
+            const newSealedToken = await sealData(
+              { did: sessionData.did },
+              { password: this.config.cookieSecret },
+            );
 
-        // Update stored session with new tokens
-        const updatedSessionData: StoredOAuthSession = {
-          ...oauthData,
-          accessToken: refreshedSession.accessToken,
-          refreshToken: refreshedSession.refreshToken || oauthData.refreshToken,
-          expiresAt: refreshedSession.timeUntilExpiry
-            ? Date.now() + refreshedSession.timeUntilExpiry
-            : undefined,
-          updatedAt: Date.now(),
-        };
-
-        await this.storage.set(`oauth_session:${sessionData.did}`, updatedSessionData);
-
-        // Create new sealed token for mobile client
-        const newSealedToken = await sealData(
-          { did: sessionData.did },
-          { password: this.config.cookieSecret },
-        );
-
-        return {
-          success: true,
-          sessionToken: newSealedToken,
-          did: sessionData.did,
-          accessToken: refreshedSession.accessToken,
-          refreshToken: refreshedSession.refreshToken,
-          expiresAt: Date.now() + (refreshedSession.timeUntilExpiry || 0),
-        };
-      } else {
-        // No refresh token or refresh method available
-        const newSealedToken = await sealData(
-          { did: sessionData.did },
-          { password: this.config.cookieSecret },
-        );
-
-        return {
-          success: true,
-          sessionToken: newSealedToken,
-          did: sessionData.did,
-          accessToken: oauthData.accessToken,
-          refreshToken: oauthData.refreshToken,
-          expiresAt: oauthData.expiresAt,
-        };
+            return {
+              success: true,
+              payload: {
+                did: sessionData.did,
+                sid: newSealedToken,
+              },
+            };
+          }
+        } catch (restoreError) {
+          // If restore fails, fall back to just returning a new sealed token
+          console.log("OAuth restore failed during refresh, falling back:", restoreError);
+        }
       }
+
+      // Fallback: Just return a new sealed session ID without token refresh
+      const newSealedToken = await sealData(
+        { did: sessionData.did },
+        { password: this.config.cookieSecret },
+      );
+
+      return {
+        success: true,
+        payload: {
+          did: sessionData.did,
+          sid: newSealedToken,
+        },
+      };
     } catch (error) {
       return {
         success: false,

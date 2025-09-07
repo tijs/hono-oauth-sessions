@@ -170,14 +170,13 @@ export interface CallbackResult {
 }
 
 /**
- * Mobile token refresh result
+ * Mobile token refresh result (BookHive style)
  */
 export interface RefreshResult {
   success: boolean;
-  sessionToken?: string;
-  did?: string;
-  accessToken?: string;
-  refreshToken?: string;
-  expiresAt?: number;
   error?: string;
+  payload?: {
+    did: string;
+    sid: string;
+  };
 }
