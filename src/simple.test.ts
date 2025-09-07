@@ -58,6 +58,13 @@ class MockOAuthClient implements OAuthClientInterface {
         refreshToken: "refresh_token_123",
         handle: "test.bsky.social",
         timeUntilExpiry: 3600000,
+        toJSON: () => ({
+          did: "did:plc:test123",
+          accessToken: "access_token_123",
+          refreshToken: "refresh_token_123",
+          handle: "test.bsky.social",
+          timeUntilExpiry: 3600000,
+        }),
       },
     });
   }
@@ -70,6 +77,13 @@ class MockOAuthClient implements OAuthClientInterface {
       refreshToken: "mock_refresh_token",
       handle: "test.bsky.social",
       timeUntilExpiry: 3600000,
+      toJSON: () => ({
+        did: "did:plc:test123",
+        accessToken: "mock_access_token",
+        refreshToken: "mock_refresh_token",
+        handle: "test.bsky.social",
+        timeUntilExpiry: 3600000,
+      }),
     });
   }
 
