@@ -127,23 +127,9 @@ export class HonoOAuthSessions {
       const { session: oauthSession } = callbackResult;
       const did = oauthSession.did;
 
-      // Store OAuth session data
-      const sessionData: StoredOAuthSession = {
-        did,
-        accessToken: oauthSession.accessToken,
-        refreshToken: oauthSession.refreshToken,
-        handle: oauthSession.handle,
-        displayName: undefined,
-        avatar: undefined,
-        pdsUrl: undefined,
-        expiresAt: oauthSession.timeUntilExpiry
-          ? Date.now() + oauthSession.timeUntilExpiry
-          : undefined,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      await this.storage.set(`session:${did}`, sessionData);
+      // Store complete OAuth session data including DPoP keys
+      const completeSessionData = oauthSession.toJSON();
+      await this.storage.set(`session:${did}`, completeSessionData);
 
       // Create Iron Session
       const session = await this.getSession(c);
