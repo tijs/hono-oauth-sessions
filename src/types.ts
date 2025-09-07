@@ -77,6 +77,11 @@ export interface SessionInterface {
    * Refresh tokens (optional)
    */
   refresh?(): Promise<SessionInterface>;
+
+  /**
+   * Serialize session data for storage (required for complete session storage)
+   */
+  toJSON(): any;
 }
 
 /**
