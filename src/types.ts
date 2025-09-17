@@ -206,7 +206,10 @@ export interface OAuthSessionsInterface {
    * @param options - OAuth options
    * @returns Authorization URL
    */
-  startOAuth(handle: string, options?: { mobile?: boolean; codeChallenge?: string }): Promise<string>;
+  startOAuth(
+    handle: string,
+    options?: { mobile?: boolean; codeChallenge?: string },
+  ): Promise<string>;
 
   /**
    * Handle OAuth callback
