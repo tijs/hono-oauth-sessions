@@ -1,6 +1,6 @@
 {
   "name": "@tijs/hono-oauth-sessions",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Storage-agnostic OAuth session management for AT Protocol with Hono - bring your own OAuth client and storage",
   "license": "MIT",
   "repository": {

@@ -201,6 +201,55 @@ export interface RefreshResult {
  */
 export interface OAuthSessionsInterface {
   /**
+   * Start OAuth authorization flow
+   * @param handle - User handle
+   * @param options - OAuth options
+   * @returns Authorization URL
+   */
+  startOAuth(handle: string, options?: { mobile?: boolean; codeChallenge?: string }): Promise<string>;
+
+  /**
+   * Handle OAuth callback
+   * @param c - Hono context
+   * @returns Response
+   */
+  handleCallback(c: any): Promise<Response>;
+
+  /**
+   * Validate session from request context
+   * @param c - Hono context
+   * @returns Validation result
+   */
+  validateSession(c: any): Promise<ValidationResult>;
+
+  /**
+   * Validate mobile session from Bearer token
+   * @param authHeader - Authorization header
+   * @returns Validation result
+   */
+  validateMobileSession(authHeader: string): Promise<ValidationResult>;
+
+  /**
+   * Refresh mobile token
+   * @param authHeader - Authorization header
+   * @returns Refresh result
+   */
+  refreshMobileToken(authHeader: string): Promise<RefreshResult>;
+
+  /**
+   * Get stored OAuth data for a DID
+   * @param did - User's DID
+   * @returns Stored OAuth session or null
+   */
+  getStoredOAuthData(did: string): Promise<StoredOAuthSession | null>;
+
+  /**
+   * Logout user
+   * @param c - Hono context
+   */
+  logout(c: any): Promise<void>;
+
+  /**
    * Get an OAuth session for a specific DID
    * @param did - User's DID
    * @returns OAuth session or null if not found
