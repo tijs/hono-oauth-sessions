@@ -93,6 +93,7 @@ export type {
   HonoOAuthConfig,
   MobileCallbackData,
   OAuthClientInterface,
+  OAuthSessionsInterface,
   OAuthStorage,
   SessionData,
   SessionInterface,

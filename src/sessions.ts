@@ -7,6 +7,7 @@ import type {
   OAuthStorage,
   RefreshResult,
   SessionData,
+  SessionInterface,
   StoredOAuthSession,
   ValidationResult,
 } from "./types.ts";
@@ -441,7 +442,7 @@ export class HonoOAuthSessions {
    * }
    * ```
    */
-  async getOAuthSession(did: string): Promise<any | null> {
+  async getOAuthSession(did: string): Promise<SessionInterface | null> {
     try {
       // Use the OAuth client's restore method now that storage keys align
       return await this.config.oauthClient.restore(did);

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-09-17
+
+### Added
+
+- **Enhanced Type Safety**: Added proper TypeScript interfaces for OAuth sessions
+- **OAuth Sessions Interface**: Added `OAuthSessionsInterface` for better type safety when using `getOAuthSession()`
+
+### Changed
+
+- **BREAKING**: Added required `pdsUrl` property to `SessionInterface` for AT Protocol integration
+
+### Fixed
+
+- **Type Exports**: Improved type exports to provide better IntelliSense and compile-time type checking
+- **Return Types**: Fixed `getOAuthSession()` return type from `any | null` to `SessionInterface | null`
+
 ## [0.2.3] - 2025-09-07
 
 ### Fixed

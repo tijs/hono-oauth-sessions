@@ -65,6 +65,9 @@ export interface SessionInterface {
   /** Handle/username (optional) */
   handle?: string;
 
+  /** User's PDS URL */
+  pdsUrl: string;
+
   /** Time until token expires in milliseconds (optional) */
   timeUntilExpiry?: number;
 
@@ -191,4 +194,16 @@ export interface RefreshResult {
     did: string;
     sid: string;
   };
+}
+
+/**
+ * OAuth sessions manager interface
+ */
+export interface OAuthSessionsInterface {
+  /**
+   * Get an OAuth session for a specific DID
+   * @param did - User's DID
+   * @returns OAuth session or null if not found
+   */
+  getOAuthSession(did: string): Promise<SessionInterface | null>;
 }
