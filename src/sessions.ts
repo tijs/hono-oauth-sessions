@@ -128,8 +128,31 @@ export class HonoOAuthSessions {
       const { session: oauthSession } = callbackResult;
       const did = oauthSession.did;
 
-      // Store complete OAuth session data including DPoP keys
-      const completeSessionData = oauthSession.toJSON();
+      // Fetch user profile to get avatar and displayName
+      let profileData: { displayName?: string; avatar?: string } = {};
+      try {
+        const profileResponse = await oauthSession.makeRequest(
+          "GET",
+          `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${did}`,
+        );
+
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json();
+          profileData = {
+            displayName: profile.displayName,
+            avatar: profile.avatar,
+          };
+        }
+      } catch (error) {
+        console.warn("Failed to fetch profile during OAuth callback:", error);
+        // Continue without profile data - not critical for auth
+      }
+
+      // Store complete OAuth session data including DPoP keys and profile
+      const completeSessionData = {
+        ...oauthSession.toJSON(),
+        ...profileData,
+      };
       await this.storage.set(`session:${did}`, completeSessionData);
 
       // Create Iron Session
@@ -156,6 +179,12 @@ export class HonoOAuthSessions {
         }
         if (oauthSession.refreshToken) {
           mobileCallbackUrl.searchParams.set("refresh_token", oauthSession.refreshToken);
+        }
+        if (profileData.avatar) {
+          mobileCallbackUrl.searchParams.set("avatar", profileData.avatar);
+        }
+        if (profileData.displayName) {
+          mobileCallbackUrl.searchParams.set("display_name", profileData.displayName);
         }
 
         return c.redirect(mobileCallbackUrl.toString());

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-09-30
+
+### Added
+
+- **Profile Fetching**: OAuth callback now automatically fetches user profile (avatar and displayName) from PDS using `app.bsky.actor.getProfile`
+- **Avatar Support**: User avatar URLs are now stored in OAuth session data and returned in session validation responses
+- **Mobile Profile Data**: Mobile OAuth callback now includes `avatar` and `display_name` parameters in the redirect URL
+
+### Changed
+
+- **Enhanced Session Data**: `StoredOAuthSession` now includes profile information fetched during authentication
+- **Improved UX**: Applications can now display user avatars without making additional API calls
+
 ## [0.4.0] - 2025-09-30
 
 ### 💥 BREAKING CHANGES
