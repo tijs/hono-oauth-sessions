@@ -131,6 +131,7 @@ export class HonoOAuthSessions {
       // Fetch user profile to get avatar and displayName
       let profileData: { displayName?: string; avatar?: string } = {};
       try {
+        console.log(`[OAuth] Fetching profile for ${did} from ${oauthSession.pdsUrl}`);
         const profileResponse = await oauthSession.makeRequest(
           "GET",
           `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${did}`,
@@ -142,9 +143,15 @@ export class HonoOAuthSessions {
             displayName: profile.displayName,
             avatar: profile.avatar,
           };
+          console.log(`[OAuth] Profile fetched successfully:`, {
+            displayName: profileData.displayName,
+            hasAvatar: !!profileData.avatar,
+          });
+        } else {
+          console.warn(`[OAuth] Profile fetch failed with status: ${profileResponse.status}`);
         }
       } catch (error) {
-        console.warn("Failed to fetch profile during OAuth callback:", error);
+        console.warn("[OAuth] Failed to fetch profile during OAuth callback:", error);
         // Continue without profile data - not critical for auth
       }
 
