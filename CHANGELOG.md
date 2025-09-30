@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-09-30
+
+### 💥 BREAKING CHANGES
+
+- **Required makeRequest Method**: `SessionInterface.makeRequest()` is now required (was optional). This ensures proper DPoP authentication for all AT Protocol operations.
+
+### Changed
+
+- **DPoP Authentication**: Made `makeRequest()` method required in `SessionInterface` for proper AT Protocol support
+- **Authorization Header**: Documented that `makeRequest()` uses correct `Authorization: DPoP <token>` format (not `Bearer`)
+- **Type Safety**: Improved TypeScript type safety by making DPoP method non-optional
+
+### Added
+
+- **Comprehensive Documentation**: Added detailed JSDoc for `makeRequest()` explaining DPoP proof generation, nonce handling, and proper usage for create/read/delete operations
+- **Usage Examples**: Added examples showing how to use `makeRequest()` for common AT Protocol operations (createRecord, deleteRecord)
+
+### Migration Guide
+
+If you're using a custom OAuth client, ensure it implements the `makeRequest()` method on sessions. The `@tijs/oauth-client-deno` package already provides this implementation.
+
 ## [0.3.1] - 2025-09-17
 
 ### Fixed

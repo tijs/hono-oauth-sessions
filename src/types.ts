@@ -51,6 +51,10 @@ export interface OAuthClientInterface {
 
 /**
  * Generic OAuth session interface
+ *
+ * Compatible with @tijs/oauth-client-deno Session class and similar implementations.
+ * For AT Protocol applications, makeRequest() provides automatic DPoP authentication
+ * with proper Authorization header format (DPoP scheme, not Bearer).
  */
 export interface SessionInterface {
   /** User's DID */
@@ -72,9 +76,51 @@ export interface SessionInterface {
   timeUntilExpiry?: number;
 
   /**
-   * Make authenticated request (optional - for convenience)
+   * Make authenticated request with automatic DPoP handling.
+   *
+   * This method handles:
+   * - Correct Authorization header format (DPoP scheme for AT Protocol)
+   * - DPoP proof generation and signing
+   * - Nonce challenges and retry logic
+   * - Access token hash (ath) in DPoP proof
+   *
+   * @param method - HTTP method (GET, POST, DELETE, etc.)
+   * @param url - Full URL to make request to
+   * @param options - Optional fetch options (body, headers, etc.)
+   * @returns Promise resolving to Response object
+   *
+   * @example Making authenticated PDS requests
+   * ```ts
+   * // Create a record
+   * const response = await session.makeRequest(
+   *   "POST",
+   *   `${session.pdsUrl}/xrpc/com.atproto.repo.createRecord`,
+   *   {
+   *     body: JSON.stringify({
+   *       repo: session.did,
+   *       collection: "app.example.post",
+   *       record: { text: "Hello world" }
+   *     }),
+   *     headers: { "Content-Type": "application/json" }
+   *   }
+   * );
+   *
+   * // Delete a record
+   * await session.makeRequest(
+   *   "POST",
+   *   `${session.pdsUrl}/xrpc/com.atproto.repo.deleteRecord`,
+   *   {
+   *     body: JSON.stringify({
+   *       repo: session.did,
+   *       collection: "app.example.post",
+   *       rkey: "3k2..."
+   *     }),
+   *     headers: { "Content-Type": "application/json" }
+   *   }
+   * );
+   * ```
    */
-  makeRequest?(method: string, url: string, options?: any): Promise<Response>;
+  makeRequest(method: string, url: string, options?: RequestInit): Promise<Response>;
 
   /**
    * Refresh tokens (optional)

@@ -59,6 +59,9 @@ class MockOAuthClient implements OAuthClientInterface {
         handle: "test.bsky.social",
         pdsUrl: "https://bsky.social",
         timeUntilExpiry: 3600000,
+        makeRequest: (_method: string, _url: string, _options?: RequestInit) => {
+          return Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 }));
+        },
         toJSON: () => ({
           did: "did:plc:test123",
           accessToken: "access_token_123",
@@ -80,6 +83,9 @@ class MockOAuthClient implements OAuthClientInterface {
       handle: "test.bsky.social",
       pdsUrl: "https://bsky.social",
       timeUntilExpiry: 3600000,
+      makeRequest: (_method: string, _url: string, _options?: RequestInit) => {
+        return Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 }));
+      },
       toJSON: () => ({
         did: "did:plc:test123",
         accessToken: "mock_access_token",
