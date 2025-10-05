@@ -1,5 +1,7 @@
 # @tijs/hono-oauth-sessions
 
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/tijsteulings)
+
 Storage-agnostic OAuth session management for AT Protocol applications. **Bring your own OAuth client and storage** - requires specific interfaces (see documentation).
 
 ## Features
@@ -488,6 +490,10 @@ git commit -m "chore: release v0.1.2"
 git tag v0.1.2
 git push --tags
 ```
+
+## Support
+
+If this library helps you build AT Protocol applications, consider [supporting my work on Ko-fi](https://ko-fi.com/tijsteulings).
 
 ## License
 
