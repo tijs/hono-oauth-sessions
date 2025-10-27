@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-10-27
+
+### Added
+
+- **Custom Redirect Support**: `startOAuth()` now accepts an optional `redirectPath` parameter to specify where users should be redirected after completing OAuth authentication
+- **Security Validation**: Redirect paths are validated to only allow relative paths starting with `/` (and not `//`) to prevent open redirect vulnerabilities
+- **OAuth State Storage**: Redirect path is securely stored in OAuth state and restored after authentication completes
+
+### Changed
+
+- **Post-OAuth Redirect**: `handleCallback()` now uses stored redirect path from OAuth state instead of always redirecting to `/`
+- **Flexible Navigation**: Applications can now redirect users back to their intended destination after login (e.g., bookmarking flow, deep links)
+
+### Fixed
+
+- **Bookmarklet Flow**: Fixes issue where users trying to save bookmarks while logged out would lose their context after authentication
+
 ## [0.4.2] - 2025-09-30
 
 ### Fixed

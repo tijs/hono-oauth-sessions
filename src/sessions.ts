@@ -70,7 +70,7 @@ export class HonoOAuthSessions {
    */
   async startOAuth(
     handle: string,
-    options?: { mobile?: boolean; codeChallenge?: string },
+    options?: { mobile?: boolean; codeChallenge?: string; redirectPath?: string },
   ): Promise<string> {
     if (!isValidHandle(handle)) {
       throw new OAuthFlowError("Invalid handle");
@@ -85,6 +85,16 @@ export class HonoOAuthSessions {
       if (options?.mobile) {
         state.mobile = true;
         state.codeChallenge = options.codeChallenge;
+      }
+
+      // Store redirect path for post-OAuth redirect (validate it's a relative path)
+      if (options?.redirectPath) {
+        // Security: Only allow relative paths starting with /
+        if (options.redirectPath.startsWith("/") && !options.redirectPath.startsWith("//")) {
+          state.redirectPath = options.redirectPath;
+        } else {
+          console.warn(`Invalid redirect path ignored: ${options.redirectPath}`);
+        }
       }
 
       const authUrl = await this.config.oauthClient.authorize(handle, {
@@ -197,8 +207,9 @@ export class HonoOAuthSessions {
         return c.redirect(mobileCallbackUrl.toString());
       }
 
-      // Web callback - redirect to home
-      return c.redirect("/");
+      // Web callback - redirect to stored path or home
+      const redirectPath = state.redirectPath || "/";
+      return c.redirect(redirectPath);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return c.text(`OAuth callback failed: ${message}`, 400);
