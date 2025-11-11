@@ -479,23 +479,49 @@ export class HonoOAuthSessions {
    * This method provides a clean interface for applications to get OAuth sessions
    * without needing to handle the complexity of session restoration and token refresh.
    *
+   * The underlying OAuth client automatically handles token refresh if the session
+   * is expired. This method will throw typed errors to help diagnose authentication
+   * issues.
+   *
    * @param did - User's DID to restore session for
    * @returns Promise resolving to OAuth session, or null if not found
+   * @throws {SessionNotFoundError} When session doesn't exist in storage
+   * @throws {RefreshTokenExpiredError} When refresh token has expired
+   * @throws {RefreshTokenRevokedError} When refresh token has been revoked
+   * @throws {NetworkError} For transient network failures
+   * @throws {TokenExchangeError} For other token refresh failures
+   * @throws {SessionError} For unexpected session restoration failures
+   *
    * @example
    * ```ts
-   * const oauthSession = await sessions.getOAuthSession(userDid);
-   * if (oauthSession) {
-   *   const response = await oauthSession.fetch('/xrpc/com.atproto.repo.listRecords');
+   * try {
+   *   const oauthSession = await sessions.getOAuthSession(userDid);
+   *   if (oauthSession) {
+   *     const response = await oauthSession.fetch('/xrpc/com.atproto.repo.listRecords');
+   *   }
+   * } catch (error) {
+   *   if (error instanceof SessionNotFoundError) {
+   *     // User needs to re-authenticate
+   *   } else if (error instanceof RefreshTokenExpiredError) {
+   *     // Refresh token expired - re-login required
+   *   }
    * }
    * ```
    */
   async getOAuthSession(did: string): Promise<SessionInterface | null> {
-    try {
-      // Use the OAuth client's restore method now that storage keys align
-      return await this.config.oauthClient.restore(did);
-    } catch (error) {
-      console.error(`Failed to restore OAuth session for ${did}:`, error);
-      return null;
+    console.log(`Restoring OAuth session for DID: ${did}`);
+
+    // The OAuth client's restore() method now throws typed errors
+    // instead of returning null. We propagate these errors to give
+    // calling code better visibility into why session restoration failed.
+    const session = await this.config.oauthClient.restore(did);
+
+    if (session) {
+      console.log(`OAuth session restored successfully for DID: ${did}`);
+    } else {
+      console.log(`OAuth session not found for DID: ${did}`);
     }
+
+    return session;
   }
 }

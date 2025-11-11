@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-01-11
+
+### Changed
+
+- **BREAKING**: `getOAuthSession()` now propagates typed errors from the underlying OAuth client instead of catching and returning null
+  - Requires `@tijs/oauth-client-deno@^3.0.0` which throws typed errors
+  - Errors include: `SessionNotFoundError`, `RefreshTokenExpiredError`, `RefreshTokenRevokedError`, `NetworkError`, `TokenExchangeError`, `SessionError`
+  - Calling code must now handle these errors explicitly
+
+### Added
+
+- **Enhanced Error Visibility**: `getOAuthSession()` now provides detailed error information for better debugging
+- **Detailed Logging**: Added logging for session restoration attempts and results
+
+### Improved
+
+- **Error Diagnostics**: Applications can now distinguish between different failure modes (session not found, token expired, network error, etc.)
+- **Migration Support**: JSDoc updated with examples of new error handling pattern
+
+### Migration Guide
+
+Applications using `getOAuthSession()` must now handle errors:
+
+**Before (v0.x):**
+
+```typescript
+const session = await sessions.getOAuthSession(did);
+if (!session) {
+  // Unknown why it failed
+  return 401;
+}
+```
+
+**After (v1.x):**
+
+```typescript
+try {
+  const session = await sessions.getOAuthSession(did);
+  if (!session) {
+    return 401;
+  }
+} catch (error) {
+  if (error instanceof SessionNotFoundError) {
+    // Session doesn't exist - user needs to log in
+  } else if (error instanceof RefreshTokenExpiredError) {
+    // Refresh token expired - re-authentication required
+  } else if (error instanceof NetworkError) {
+    // Transient failure - retry may help
+  }
+  return 401;
+}
+```
+
 ## [0.5.0] - 2025-10-27
 
 ### Added
