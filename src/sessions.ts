@@ -524,4 +524,87 @@ export class HonoOAuthSessions {
 
     return session;
   }
+
+  /**
+   * Get OAuth session from a raw Request object by extracting and validating the session cookie
+   *
+   * This is a convenience method that:
+   * 1. Extracts the session cookie from request headers
+   * 2. Unseals the iron-session cookie to get the DID
+   * 3. Calls getOAuthSession() to restore the session with automatic token refresh
+   *
+   * Use this when you have a raw Request object (e.g., from c.req.raw) and need to
+   * authenticate the user without first getting a Hono Context.
+   *
+   * @param req - The HTTP request containing the session cookie
+   * @returns Promise resolving to OAuth session, or null if session is invalid/expired
+   * @throws Same errors as getOAuthSession() (SessionNotFoundError, RefreshTokenExpiredError, etc.)
+   *
+   * @example
+   * ```ts
+   * // In a Hono route handler
+   * app.get('/api/bookmarks', async (c) => {
+   *   const oauthSession = await sessions.getOAuthSessionFromRequest(c.req.raw);
+   *   if (!oauthSession) {
+   *     return c.json({ error: 'Authentication required' }, 401);
+   *   }
+   *   // Use oauthSession.makeRequest() for authenticated API calls
+   * });
+   * ```
+   */
+  async getOAuthSessionFromRequest(req: Request): Promise<SessionInterface | null> {
+    try {
+      // Extract session cookie
+      const cookieHeader = req.headers.get("cookie");
+      if (!cookieHeader?.includes(`${this.config.cookieName}=`)) {
+        return null;
+      }
+
+      const sessionCookie = cookieHeader
+        .split(";")
+        .find((c) => c.trim().startsWith(`${this.config.cookieName}=`))
+        ?.split("=")[1];
+
+      if (!sessionCookie) {
+        return null;
+      }
+
+      // Unseal session data to get DID
+      const sessionData = await unsealData(decodeURIComponent(sessionCookie), {
+        password: this.config.cookieSecret,
+      }) as SessionData;
+
+      const userDid = sessionData?.did;
+      if (!userDid) {
+        console.error("No DID found in session data:", sessionData);
+        return null;
+      }
+
+      // Get OAuth session (with automatic token refresh)
+      return await this.getOAuthSession(userDid);
+    } catch (error) {
+      console.error("Failed to get OAuth session from request:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get a Set-Cookie header that clears the session cookie
+   *
+   * Use this when you need to log out a user or clear an invalid session.
+   * The returned header string can be set directly in a Response.
+   *
+   * @returns Set-Cookie header string to clear the session cookie
+   *
+   * @example
+   * ```ts
+   * // In a route handler when session is invalid
+   * const response = c.json({ error: 'Session expired' }, 401);
+   * response.headers.set('Set-Cookie', sessions.getClearCookieHeader());
+   * return response;
+   * ```
+   */
+  getClearCookieHeader(): string {
+    return `${this.config.cookieName}=; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=0`;
+  }
 }

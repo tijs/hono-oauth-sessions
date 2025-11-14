@@ -304,4 +304,17 @@ export interface OAuthSessionsInterface {
    * @returns OAuth session or null if not found
    */
   getOAuthSession(did: string): Promise<SessionInterface | null>;
+
+  /**
+   * Get OAuth session from a raw Request object
+   * @param req - HTTP request containing session cookie
+   * @returns OAuth session or null if not found
+   */
+  getOAuthSessionFromRequest(req: Request): Promise<SessionInterface | null>;
+
+  /**
+   * Get Set-Cookie header to clear the session cookie
+   * @returns Set-Cookie header string
+   */
+  getClearCookieHeader(): string;
 }
