@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-01-14
+
+### Added
+
+- **Session Helper Methods**: New convenience methods to reduce boilerplate in applications
+  - `getOAuthSessionFromRequest(req: Request)`: Extract and validate session from raw Request object by unsealing iron-session cookie, extracting DID, and restoring OAuth session with automatic token refresh
+  - `getClearCookieHeader()`: Returns properly formatted Set-Cookie header to clear the session cookie
+- **Enhanced Developer Experience**: Applications can now authenticate requests without manually handling cookie unsealing or iron-session imports
+- **Comprehensive Documentation**: Full JSDoc comments with usage examples for new helper methods
+
+### Improved
+
+- **Reduced Application Boilerplate**: Applications no longer need to implement cookie extraction and unsealing logic (saves ~150 lines per app)
+- **Single Source of Truth**: All iron-session cookie handling logic now centralized in the library
+
 ## [1.0.0] - 2025-01-11
 
 ### Changed
