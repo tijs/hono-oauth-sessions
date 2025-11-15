@@ -23,7 +23,7 @@ deno add @tijs/hono-oauth-sessions
 ## Quick Start
 
 ```typescript
-import { Hono } from "jsr:@hono/hono@^4.9.6";
+import { Hono } from "jsr:@hono/hono@4.9.6";
 import { OAuthClient } from "jsr:@tijs/oauth-client-deno@1.0.1";
 import { HonoOAuthSessions } from "jsr:@tijs/hono-oauth-sessions";
 

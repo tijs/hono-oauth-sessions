@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-15
+
+### Changed
+
+- **Dependency Management**: Use exact version numbers instead of semver ranges for all dependencies
+  - Changed `@hono/hono` from `^4.9.6` to `4.9.6` in deno.json
+  - Updated README examples to use exact version
+  - Ensures reproducible builds and prevents unexpected breaking changes
+
 ## [2.0.1] - 2025-01-15
 
 ### Fixed
