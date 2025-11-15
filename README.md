@@ -148,6 +148,7 @@ const sessions = new HonoOAuthSessions({
 ```
 
 The logger will output:
+
 - OAuth flow progress (profile fetching, token refresh)
 - Session validation and restoration
 - Configuration warnings (e.g., invalid redirect paths)
@@ -507,17 +508,18 @@ interface RefreshTokenData {
 ```
 
 **Example implementation:**
+
 ```typescript
 class MyOAuthClient implements OAuthClientInterface {
   // ... other methods ...
 
   async refresh(tokens: RefreshTokenData): Promise<SessionInterface> {
     // Use tokens.refreshToken to get new access token from OAuth server
-    const response = await fetch('https://oauth-server/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("https://oauth-server/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
         refresh_token: tokens.refreshToken,
         client_id: this.clientId,
       }),
@@ -562,10 +564,12 @@ Destroy session and clean up stored data.
 Helper method to extract and validate an OAuth session directly from a Request object. Useful for custom middleware or non-Hono contexts where you don't have access to the Hono Context object.
 
 **Returns:**
+
 - `SessionInterface` if session is valid and found
 - `null` if no session exists, cookie is missing, or session is invalid
 
 **Example:**
+
 ```typescript
 // In a custom middleware or API handler
 const session = await sessions.getOAuthSessionFromRequest(request);
@@ -576,7 +580,7 @@ if (!session) {
 // Use the session
 const profile = await session.makeRequest(
   "GET",
-  `${session.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${session.did}`
+  `${session.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${session.did}`,
 );
 ```
 
@@ -585,6 +589,7 @@ const profile = await session.makeRequest(
 Returns a `Set-Cookie` header string that clears the session cookie. Useful when you need to manually construct logout responses or clear sessions in custom scenarios.
 
 **Example:**
+
 ```typescript
 // Manual logout response
 return new Response("Logged out", {

@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 If you implemented a custom OAuth client with the `refresh()` method, update your implementation:
 
 **Before (v1.1.x):**
+
 ```typescript
 async refresh(session: SessionInterface): Promise<SessionInterface> {
   // Use session.refreshToken to get new token
@@ -44,6 +45,7 @@ async refresh(session: SessionInterface): Promise<SessionInterface> {
 ```
 
 **After (v1.2.0):**
+
 ```typescript
 async refresh(tokens: RefreshTokenData): Promise<SessionInterface> {
   // Use tokens.refreshToken to get new token
