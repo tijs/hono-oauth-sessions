@@ -96,7 +96,6 @@ export type {
   OAuthClientInterface,
   OAuthSessionsInterface,
   OAuthStorage,
-  RefreshTokenData,
   SessionData,
   SessionInterface,
   StoredOAuthSession,

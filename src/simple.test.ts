@@ -97,28 +97,7 @@ class MockOAuthClient implements OAuthClientInterface {
     });
   }
 
-  refresh(tokens: import("./types.ts").RefreshTokenData): Promise<SessionInterface> {
-    // Mock implementation - return refreshed session with new access token
-    return Promise.resolve({
-      did: tokens.did,
-      accessToken: "refreshed_access_token",
-      refreshToken: tokens.refreshToken,
-      handle: tokens.handle,
-      pdsUrl: tokens.pdsUrl,
-      timeUntilExpiry: 3600000, // 1 hour
-      makeRequest: (_method: string, _url: string, _options?: RequestInit) => {
-        return Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 }));
-      },
-      toJSON: () => ({
-        did: tokens.did,
-        accessToken: "refreshed_access_token",
-        refreshToken: tokens.refreshToken,
-        handle: tokens.handle,
-        pdsUrl: tokens.pdsUrl,
-        timeUntilExpiry: 3600000,
-      }),
-    });
-  }
+  // refresh() method removed - token refresh is handled by OAuth client's restore() method
 
   reset() {
     this.lastAuthorizeCall = null;
@@ -269,9 +248,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
         accessToken: "access_token_123",
         refreshToken: "refresh_token_123",
         handle: "test.bsky.social",
-        displayName: "Test User",
-        avatar: undefined,
-        pdsUrl: undefined,
+        pdsUrl: "https://bsky.social",
         expiresAt: Date.now() + 3600000,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -284,7 +261,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
       assertEquals(result?.did, testDid);
       assertEquals(result?.accessToken, "access_token_123");
       assertEquals(result?.handle, "test.bsky.social");
-      assertEquals(result?.displayName, "Test User");
+      // displayName and avatar removed - applications should fetch profile data separately
     });
 
     it("should return null for missing session data", async () => {

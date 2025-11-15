@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-01-15
+
+### Removed (BREAKING CHANGES)
+
+- **`RefreshTokenData` interface**: Removed - token refresh is now handled entirely by the OAuth client
+- **`OAuthClientInterface.refresh()` method**: Removed optional refresh method requirement
+  - OAuth clients should handle automatic token refresh in their `restore()` method
+  - This fixes architectural boundary violations where session manager was orchestrating OAuth protocol operations
+- **Profile data fetching**: Removed automatic profile data fetching during OAuth callback
+  - `StoredOAuthSession` no longer includes `displayName` or `avatar` fields
+  - `ValidationResult` no longer includes `displayName` field
+  - `MobileCallbackData` no longer includes `displayName` or `avatar` fields
+  - Applications should fetch profile data separately if needed
+- **Automatic token refresh**: Removed token refresh logic from `validateSession()`
+  - Token refresh is now the OAuth client's responsibility via `restore()` method
+  - Eliminates duplicate refresh logic and 5-minute expiration buffer checks
+  - Cleaner separation: session manager handles session persistence, OAuth client handles OAuth protocol
+
+### Changed
+
+- **Minimal Session Storage**: `StoredOAuthSession` now contains only essential OAuth data from `SessionInterface.toJSON()`
+- **Simplified Validation**: `validateSession()` and `validateMobileSession()` now only validate session existence and return basic info
+- **OAuth Client Responsibility**: Token refresh must be handled by OAuth client's `restore()` method (already implemented in `@tijs/oauth-client-deno`)
+- **Documentation**: Updated `OAuthClientInterface.restore()` documentation to clarify automatic refresh expectation
+
+### Improved
+
+- **Clean Architecture**: Each package now has one clear responsibility
+  - hono-oauth-sessions: Hono-specific session persistence (Iron Session cookies, storage coordination)
+  - oauth-client-deno: All OAuth protocol operations (authorize, callback, restore, refresh)
+- **No Duplicate Logic**: Token refresh logic exists only in oauth-client-deno
+- **No Interface Mismatches**: Removed invented interfaces that didn't match actual OAuth client APIs
+- **Flexibility**: Applications fetch only the profile data they need, when they need it
+- **Simplicity**: ~150 lines of code removed, clearer boundaries, easier testing
+
+### Migration Guide
+
+**For applications using hono-oauth-sessions:**
+
+1. **Profile Data**: Fetch profile data separately in your application code
+   ```typescript
+   // Before (automatic)
+   const result = await sessions.validateSession(c);
+   console.log(result.displayName); // Was automatically included
+
+   // After (manual)
+   const result = await sessions.validateSession(c);
+   if (result.valid) {
+     const oauthSession = await sessions.getOAuthSession(result.did);
+     const profile = await oauthSession.makeRequest('GET',
+       `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${result.did}`);
+   }
+   ```
+
+2. **Token Refresh**: Use `oauthClient.restore(did)` instead of relying on `validateSession()` to refresh
+   ```typescript
+   // Before (automatic during validation)
+   const result = await sessions.validateSession(c);
+   // Tokens were automatically refreshed
+
+   // After (explicit via restore)
+   const result = await sessions.validateSession(c);
+   if (result.valid) {
+     const oauthSession = await sessions.getOAuthSession(result.did);
+     // OAuth client's restore() handles automatic refresh
+   }
+   ```
+
+3. **Custom OAuth Clients**: Remove `refresh()` method - implement automatic refresh in `restore()` instead
+
+**This is a major architectural improvement that eliminates scope creep and clarifies package responsibilities.**
+
 ## [1.2.0] - 2025-01-15
 
 ### Changed

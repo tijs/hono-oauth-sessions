@@ -7,7 +7,6 @@ import type {
   Logger,
   OAuthStorage,
   RefreshResult,
-  RefreshTokenData,
   SessionData,
   SessionInterface,
   StoredOAuthSession,
@@ -155,39 +154,8 @@ export class HonoOAuthSessions {
       const { session: oauthSession } = callbackResult;
       const did = oauthSession.did;
 
-      // Fetch user profile to get avatar and displayName
-      let profileData: { displayName?: string; avatar?: string } = {};
-      try {
-        this.logger.log(`[OAuth] Fetching profile for ${did} from ${oauthSession.pdsUrl}`);
-        const profileResponse = await oauthSession.makeRequest(
-          "GET",
-          `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${did}`,
-        );
-
-        if (profileResponse.ok) {
-          const profile = await profileResponse.json();
-          profileData = {
-            displayName: profile.displayName,
-            avatar: profile.avatar,
-          };
-          this.logger.log(`[OAuth] Profile fetched successfully:`, {
-            displayName: profileData.displayName,
-            hasAvatar: !!profileData.avatar,
-          });
-        } else {
-          this.logger.warn(`[OAuth] Profile fetch failed with status: ${profileResponse.status}`);
-        }
-      } catch (error) {
-        this.logger.warn("[OAuth] Failed to fetch profile during OAuth callback:", error);
-        // Continue without profile data - not critical for auth
-      }
-
-      // Store complete OAuth session data including DPoP keys and profile
-      const completeSessionData = {
-        ...oauthSession.toJSON(),
-        ...profileData,
-      };
-      await this.storage.set(`session:${did}`, completeSessionData);
+      // Store OAuth session data including DPoP keys
+      await this.storage.set(`session:${did}`, oauthSession.toJSON());
 
       // Create Iron Session
       const session = await this.getSession(c);
@@ -214,12 +182,6 @@ export class HonoOAuthSessions {
         if (oauthSession.refreshToken) {
           mobileCallbackUrl.searchParams.set("refresh_token", oauthSession.refreshToken);
         }
-        if (profileData.avatar) {
-          mobileCallbackUrl.searchParams.set("avatar", profileData.avatar);
-        }
-        if (profileData.displayName) {
-          mobileCallbackUrl.searchParams.set("display_name", profileData.displayName);
-        }
 
         return c.redirect(mobileCallbackUrl.toString());
       }
@@ -234,7 +196,8 @@ export class HonoOAuthSessions {
   }
 
   /**
-   * Validate session and return user info with automatic token refresh
+   * Validate session and return user info.
+   * Token refresh is handled by the OAuth client's restore() method when needed.
    */
   async validateSession(c: Context): Promise<ValidationResult> {
     try {
@@ -256,55 +219,10 @@ export class HonoOAuthSessions {
         return { valid: false };
       }
 
-      // Check if tokens need refreshing and refresh them automatically
-      try {
-        // Check if token is expired (within 5 minutes of expiry)
-        const isExpired = oauthData.expiresAt &&
-          (Date.now() + (5 * 60 * 1000) >= oauthData.expiresAt);
-
-        if (isExpired && oauthData.refreshToken && this.config.oauthClient.refresh) {
-          this.logger.log("Token is expired, refreshing for user:", session.did);
-
-          // Prepare token data for refresh - honest representation of what's needed
-          const tokensForRefresh: RefreshTokenData = {
-            did: oauthData.did,
-            accessToken: oauthData.accessToken,
-            refreshToken: oauthData.refreshToken,
-            handle: oauthData.handle,
-            pdsUrl: oauthData.pdsUrl,
-            expiresAt: oauthData.expiresAt,
-          };
-
-          // Use the OAuth client's refresh method if available
-          const refreshedSession = await this.config.oauthClient.refresh(
-            tokensForRefresh,
-          );
-
-          // Update stored session with new tokens
-          const updatedSessionData: StoredOAuthSession = {
-            ...oauthData,
-            accessToken: refreshedSession.accessToken,
-            refreshToken: refreshedSession.refreshToken || oauthData.refreshToken,
-            expiresAt: refreshedSession.timeUntilExpiry
-              ? Date.now() + refreshedSession.timeUntilExpiry
-              : undefined,
-            updatedAt: Date.now(),
-          };
-
-          await this.storage.set(`session:${session.did}`, updatedSessionData);
-          this.logger.log("Token refresh successful for user:", session.did);
-        }
-      } catch (refreshError) {
-        this.logger.error("Token refresh failed during session validation:", refreshError);
-        // Don't fail the session validation if refresh fails - let the client handle it
-        // The session might still be usable for a short time
-      }
-
       return {
         valid: true,
         did: session.did,
         handle: oauthData.handle,
-        displayName: oauthData.displayName,
       };
     } catch (error) {
       throw new SessionError(
@@ -352,7 +270,6 @@ export class HonoOAuthSessions {
         valid: true,
         did: sessionData.did,
         handle: oauthData.handle,
-        displayName: oauthData.displayName,
       };
     } catch (error) {
       if (error instanceof MobileIntegrationError) {

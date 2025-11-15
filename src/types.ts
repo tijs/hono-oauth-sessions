@@ -31,26 +31,6 @@ export interface OAuthStorage {
 }
 
 /**
- * Token data required for refreshing an expired session.
- * This interface honestly represents the minimal data needed for token refresh,
- * avoiding the need to construct fake SessionInterface objects.
- */
-export interface RefreshTokenData {
-  /** User's DID */
-  did: string;
-  /** Current access token */
-  accessToken: string;
-  /** Refresh token for obtaining new access token */
-  refreshToken: string;
-  /** User's handle (optional) */
-  handle?: string;
-  /** User's PDS URL */
-  pdsUrl: string;
-  /** Token expiration timestamp in milliseconds (optional) */
-  expiresAt?: number;
-}
-
-/**
  * Generic OAuth client interface - bring your own client!
  * Compatible with @tijs/oauth-client-deno v1.0.0+, @atproto/oauth-client-node, and similar clients
  */
@@ -71,18 +51,12 @@ export interface OAuthClientInterface {
   }>;
 
   /**
-   * Restore a session from storage by session ID
+   * Restore a session from storage by session ID.
+   * The OAuth client should handle automatic token refresh during restore if needed.
    * @param sessionId - Session identifier to restore
    * @returns Promise resolving to restored session, or null if not found
    */
   restore(sessionId: string): Promise<SessionInterface | null>;
-
-  /**
-   * Refresh an expired session (optional)
-   * @param tokens - Token data needed for refresh
-   * @returns Promise resolving to refreshed session
-   */
-  refresh?(tokens: RefreshTokenData): Promise<SessionInterface>;
 }
 
 /**
@@ -232,15 +206,15 @@ export interface SessionData {
 }
 
 /**
- * OAuth session data stored in SQLite
+ * OAuth session data stored in storage backend.
+ * This is a minimal representation - applications should fetch additional
+ * profile data separately if needed.
  */
 export interface StoredOAuthSession {
   did: string;
   accessToken: string;
   refreshToken?: string;
   handle?: string;
-  displayName?: string;
-  avatar?: string;
   pdsUrl: string; // Required - comes from SessionInterface.pdsUrl
   expiresAt?: number;
   createdAt: number;
@@ -254,8 +228,6 @@ export interface MobileCallbackData {
   sessionToken: string;
   did: string;
   handle?: string;
-  displayName?: string;
-  avatar?: string;
   pdsUrl?: string;
   accessToken?: string;
   refreshToken?: string;
@@ -263,13 +235,13 @@ export interface MobileCallbackData {
 }
 
 /**
- * Session validation result
+ * Session validation result.
+ * Applications should fetch additional profile data separately if needed.
  */
 export interface ValidationResult {
   valid: boolean;
   did?: string;
   handle?: string;
-  displayName?: string;
   session?: SessionInterface;
 }
 
