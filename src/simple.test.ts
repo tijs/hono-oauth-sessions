@@ -97,6 +97,29 @@ class MockOAuthClient implements OAuthClientInterface {
     });
   }
 
+  refresh(tokens: import("./types.ts").RefreshTokenData): Promise<SessionInterface> {
+    // Mock implementation - return refreshed session with new access token
+    return Promise.resolve({
+      did: tokens.did,
+      accessToken: "refreshed_access_token",
+      refreshToken: tokens.refreshToken,
+      handle: tokens.handle,
+      pdsUrl: tokens.pdsUrl,
+      timeUntilExpiry: 3600000, // 1 hour
+      makeRequest: (_method: string, _url: string, _options?: RequestInit) => {
+        return Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 }));
+      },
+      toJSON: () => ({
+        did: tokens.did,
+        accessToken: "refreshed_access_token",
+        refreshToken: tokens.refreshToken,
+        handle: tokens.handle,
+        pdsUrl: tokens.pdsUrl,
+        timeUntilExpiry: 3600000,
+      }),
+    });
+  }
+
   reset() {
     this.lastAuthorizeCall = null;
     this.shouldFailAuthorize = false;

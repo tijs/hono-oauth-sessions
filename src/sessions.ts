@@ -7,6 +7,7 @@ import type {
   Logger,
   OAuthStorage,
   RefreshResult,
+  RefreshTokenData,
   SessionData,
   SessionInterface,
   StoredOAuthSession,
@@ -264,36 +265,19 @@ export class HonoOAuthSessions {
         if (isExpired && oauthData.refreshToken && this.config.oauthClient.refresh) {
           this.logger.log("Token is expired, refreshing for user:", session.did);
 
-          // Create a session-like object that matches SessionInterface
-          const sessionForRefresh: SessionInterface = {
+          // Prepare token data for refresh - honest representation of what's needed
+          const tokensForRefresh: RefreshTokenData = {
             did: oauthData.did,
             accessToken: oauthData.accessToken,
             refreshToken: oauthData.refreshToken,
             handle: oauthData.handle,
             pdsUrl: oauthData.pdsUrl,
-            timeUntilExpiry: oauthData.expiresAt
-              ? Math.max(0, oauthData.expiresAt - Date.now())
-              : 0,
-            // Placeholder makeRequest - not used during refresh
-            makeRequest: () => {
-              throw new Error("makeRequest not available during token refresh");
-            },
-            // Add toJSON method if needed by the OAuth client
-            toJSON: () => ({
-              did: oauthData.did,
-              accessToken: oauthData.accessToken,
-              refreshToken: oauthData.refreshToken,
-              handle: oauthData.handle,
-              dpopPrivateKeyJWK: {},
-              dpopPublicKeyJWK: {},
-              pdsUrl: oauthData.pdsUrl,
-              tokenExpiresAt: oauthData.expiresAt || Date.now() + (60 * 60 * 1000),
-            }),
+            expiresAt: oauthData.expiresAt,
           };
 
           // Use the OAuth client's refresh method if available
           const refreshedSession = await this.config.oauthClient.refresh(
-            sessionForRefresh,
+            tokensForRefresh,
           );
 
           // Update stored session with new tokens

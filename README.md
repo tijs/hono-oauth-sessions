@@ -468,6 +468,71 @@ interface OAuthStorage {
 }
 ```
 
+## Custom OAuth Client Implementation
+
+If you're implementing your own OAuth client, you need to implement the `OAuthClientInterface`:
+
+```typescript
+interface OAuthClientInterface {
+  /** Start OAuth authorization flow */
+  authorize(handle: string, options?: { state?: string }): Promise<URL>;
+
+  /** Handle OAuth callback and exchange code for tokens */
+  callback(params: URLSearchParams): Promise<{
+    session: SessionInterface;
+    state?: string | null;
+  }>;
+
+  /** Restore a session from storage by session ID */
+  restore(sessionId: string): Promise<SessionInterface | null>;
+
+  /** Refresh an expired session (optional) */
+  refresh?(tokens: RefreshTokenData): Promise<SessionInterface>;
+}
+```
+
+### Token Refresh Interface (v1.2.0+)
+
+If your OAuth client supports token refresh, implement the optional `refresh()` method. It accepts `RefreshTokenData` instead of a full `SessionInterface`, providing an honest representation of what's needed for token refresh:
+
+```typescript
+interface RefreshTokenData {
+  did: string;
+  accessToken: string;
+  refreshToken: string;
+  handle?: string;
+  pdsUrl: string;
+  expiresAt?: number;
+}
+```
+
+**Example implementation:**
+```typescript
+class MyOAuthClient implements OAuthClientInterface {
+  // ... other methods ...
+
+  async refresh(tokens: RefreshTokenData): Promise<SessionInterface> {
+    // Use tokens.refreshToken to get new access token from OAuth server
+    const response = await fetch('https://oauth-server/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'refresh_token',
+        refresh_token: tokens.refreshToken,
+        client_id: this.clientId,
+      }),
+    });
+
+    const data = await response.json();
+
+    // Return new session with refreshed tokens
+    return this.createSession(tokens.did, data.access_token, data.refresh_token);
+  }
+}
+```
+
+**Breaking Change (v1.2.0):** The `refresh()` method signature changed from accepting `SessionInterface` to `RefreshTokenData`. If you implemented a custom OAuth client with the `refresh()` method, update it to match the new signature.
+
 ## API Reference
 
 ### HonoOAuthSessions

@@ -31,6 +31,26 @@ export interface OAuthStorage {
 }
 
 /**
+ * Token data required for refreshing an expired session.
+ * This interface honestly represents the minimal data needed for token refresh,
+ * avoiding the need to construct fake SessionInterface objects.
+ */
+export interface RefreshTokenData {
+  /** User's DID */
+  did: string;
+  /** Current access token */
+  accessToken: string;
+  /** Refresh token for obtaining new access token */
+  refreshToken: string;
+  /** User's handle (optional) */
+  handle?: string;
+  /** User's PDS URL */
+  pdsUrl: string;
+  /** Token expiration timestamp in milliseconds (optional) */
+  expiresAt?: number;
+}
+
+/**
  * Generic OAuth client interface - bring your own client!
  * Compatible with @tijs/oauth-client-deno v1.0.0+, @atproto/oauth-client-node, and similar clients
  */
@@ -59,10 +79,10 @@ export interface OAuthClientInterface {
 
   /**
    * Refresh an expired session (optional)
-   * @param session - Session to refresh
+   * @param tokens - Token data needed for refresh
    * @returns Promise resolving to refreshed session
    */
-  refresh?(session: SessionInterface): Promise<SessionInterface>;
+  refresh?(tokens: RefreshTokenData): Promise<SessionInterface>;
 }
 
 /**

@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-01-15
+
+### Changed
+
+- **BREAKING (for custom OAuth clients only)**: `OAuthClientInterface.refresh()` method signature changed from accepting `SessionInterface` to `RefreshTokenData`
+  - Only affects users who implemented their own OAuth client with the optional `refresh()` method
+  - `@tijs/oauth-client-deno` users are unaffected (will be updated in coordination)
+
+### Added
+
+- **RefreshTokenData Interface**: New honest representation of data needed for token refresh
+  - Eliminates the need to construct fake `SessionInterface` objects
+  - Provides clear contract about minimal data required for token refresh
+  - Includes: `did`, `accessToken`, `refreshToken`, `handle`, `pdsUrl`, `expiresAt`
+- **Enhanced Documentation**: Added comprehensive examples for implementing custom OAuth clients with token refresh
+
+### Fixed
+
+- **Architecture**: Removed "fake session" objects created for token refresh (high-severity code smell)
+  - Previously created `SessionInterface` objects with throwing `makeRequest()` stubs
+  - Previously included empty DPoP key objects that could cause silent failures
+  - Now uses honest `RefreshTokenData` interface that accurately represents capabilities
+- **Type Safety**: Eliminated fragile workaround that violated Liskov Substitution Principle
+- **Maintainability**: Reduced risk of runtime errors if OAuth client implementation changes
+
+### Migration Guide
+
+If you implemented a custom OAuth client with the `refresh()` method, update your implementation:
+
+**Before (v1.1.x):**
+```typescript
+async refresh(session: SessionInterface): Promise<SessionInterface> {
+  // Use session.refreshToken to get new token
+  const newTokens = await this.oauthServer.refresh(session.refreshToken);
+  return this.createSession(session.did, newTokens.accessToken);
+}
+```
+
+**After (v1.2.0):**
+```typescript
+async refresh(tokens: RefreshTokenData): Promise<SessionInterface> {
+  // Use tokens.refreshToken to get new token
+  const newTokens = await this.oauthServer.refresh(tokens.refreshToken);
+  return this.createSession(tokens.did, newTokens.accessToken);
+}
+```
+
 ## [1.1.1] - 2025-01-15
 
 ### Fixed
