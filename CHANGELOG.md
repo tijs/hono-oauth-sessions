@@ -19,7 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminates the need to construct fake `SessionInterface` objects
   - Provides clear contract about minimal data required for token refresh
   - Includes: `did`, `accessToken`, `refreshToken`, `handle`, `pdsUrl`, `expiresAt`
-- **Enhanced Documentation**: Added comprehensive examples for implementing custom OAuth clients with token refresh
+- **Cookie Secret Validation**: Enforces minimum 32-character length requirement (Iron Session) with clear error message
+- **Logging Abstraction**: Added optional `logger` configuration parameter with `Logger` interface
+  - Defaults to no-op logger (no console output in production)
+  - Accepts `console` for standard logging or custom logger implementation
+  - Replaced all 15+ hardcoded `console.log/warn/error` statements
+- **Comprehensive Tests**: Added test coverage for v1.1.0 helper methods (`getOAuthSessionFromRequest()`, `getClearCookieHeader()`)
+- **Enhanced Documentation**:
+  - Added comprehensive examples for implementing custom OAuth clients with token refresh
+  - Documented v1.1.0 helper methods in API Reference with examples
+  - Added "Logging and Debugging" section to README
+  - Updated configuration interface documentation with logger option
+  - Added note about 32-character minimum for cookieSecret
 
 ### Fixed
 
@@ -27,8 +38,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Previously created `SessionInterface` objects with throwing `makeRequest()` stubs
   - Previously included empty DPoP key objects that could cause silent failures
   - Now uses honest `RefreshTokenData` interface that accurately represents capabilities
-- **Type Safety**: Eliminated fragile workaround that violated Liskov Substitution Principle
+- **Type Safety**:
+  - Removed all `as any` type casts from production code
+  - Eliminated fragile workaround that violated Liskov Substitution Principle
+  - Full TypeScript type safety without type assertions
+- **Cookie Parsing**: Fixed fragile cookie parsing that failed when cookie values contained `=` characters (common in Iron Session cookies)
+- **Type Consistency**: Made `StoredOAuthSession.pdsUrl` required to match `SessionInterface.pdsUrl`, preventing potential runtime errors
+- **Error Naming**: Renamed `ValTownOAuthError` to `HonoOAuthError` and updated all error classes to reflect library's generic nature
 - **Maintainability**: Reduced risk of runtime errors if OAuth client implementation changes
+
+### Improved
+
+- **Production Readiness**: Configurable logging allows production deployments to disable debug output
+- **Developer Experience**: Better error messages for configuration issues
+- **Code Quality**: Improved architectural design and eliminated code smells
+- **Test Coverage**: All public methods now have test coverage (25 tests passing)
 
 ### Migration Guide
 
@@ -53,36 +77,6 @@ async refresh(tokens: RefreshTokenData): Promise<SessionInterface> {
   return this.createSession(tokens.did, newTokens.accessToken);
 }
 ```
-
-## [1.1.1] - 2025-01-15
-
-### Fixed
-
-- **Type Safety**: Removed all `as any` type casts from production code by adding optional `refresh?()` method to `OAuthClientInterface`
-- **Cookie Parsing**: Fixed fragile cookie parsing that failed when cookie values contained `=` characters (common in Iron Session cookies)
-- **Type Consistency**: Made `StoredOAuthSession.pdsUrl` required to match `SessionInterface.pdsUrl`, preventing potential runtime errors
-- **Error Naming**: Renamed `ValTownOAuthError` to `HonoOAuthError` and updated all error classes to reflect library's generic nature
-
-### Added
-
-- **Cookie Secret Validation**: Enforces minimum 32-character length requirement (Iron Session) with clear error message
-- **Logging Abstraction**: Added optional `logger` configuration parameter with `Logger` interface
-  - Defaults to no-op logger (no console output in production)
-  - Accepts `console` for standard logging or custom logger implementation
-  - Replaced all 15+ hardcoded `console.log/warn/error` statements
-- **Comprehensive Tests**: Added test coverage for v1.1.0 helper methods (`getOAuthSessionFromRequest()`, `getClearCookieHeader()`)
-- **Enhanced Documentation**:
-  - Documented v1.1.0 helper methods in API Reference with examples
-  - Added "Logging and Debugging" section to README
-  - Updated configuration interface documentation with logger option
-  - Added note about 32-character minimum for cookieSecret
-
-### Improved
-
-- **Production Readiness**: Configurable logging allows production deployments to disable debug output
-- **Developer Experience**: Better error messages for configuration issues
-- **Code Quality**: Full TypeScript type safety without type assertions
-- **Test Coverage**: All public methods now have test coverage (25 tests passing)
 
 ## [1.1.0] - 2025-01-14
 
