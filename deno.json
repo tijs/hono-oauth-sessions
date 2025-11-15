@@ -1,6 +1,6 @@
 {
   "name": "@tijs/hono-oauth-sessions",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Storage-agnostic OAuth session management for AT Protocol with Hono - bring your own OAuth client and storage",
   "license": "MIT",
   "repository": {
@@ -22,7 +22,7 @@
   "imports": {
     "@hono/hono": "jsr:@hono/hono@4.9.6",
     "iron-session": "npm:iron-session@8.0.4",
-    "@atproto/syntax": "npm:@atproto/syntax@0.4.0"
+    "@atproto/syntax": "npm:@atproto/syntax@0.4.1"
   },
   "publish": {
     "exclude": [
