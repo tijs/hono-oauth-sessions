@@ -114,7 +114,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
     sessions = new HonoOAuthSessions({
       oauthClient,
       storage,
-      cookieSecret: "test-secret-key-32-chars-long!",
+      cookieSecret: "test-secret-key-must-be-32charss",
       baseUrl: "https://test.com",
     });
     oauthClient.reset();
@@ -126,7 +126,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
       try {
         new HonoOAuthSessions({
           storage,
-          cookieSecret: "test-secret",
+          cookieSecret: "test-secret-key-must-be-32charss",
           baseUrl: "https://test.com",
         } as any);
         assertEquals(false, true, "Should have thrown");
@@ -140,7 +140,7 @@ describe("HonoOAuthSessions - Business Logic", () => {
       try {
         new HonoOAuthSessions({
           oauthClient,
-          cookieSecret: "test-secret",
+          cookieSecret: "test-secret-key-must-be-32charss",
           baseUrl: "https://test.com",
         } as any);
         assertEquals(false, true, "Should have thrown");
@@ -150,11 +150,29 @@ describe("HonoOAuthSessions - Business Logic", () => {
       }
     });
 
+    it("should throw for cookieSecret shorter than 32 characters", () => {
+      try {
+        new HonoOAuthSessions({
+          oauthClient,
+          storage,
+          cookieSecret: "short",
+          baseUrl: "https://test.com",
+        });
+        assertEquals(false, true, "Should have thrown");
+      } catch (error) {
+        assertEquals(error instanceof ConfigurationError, true);
+        assertEquals(
+          (error as ConfigurationError).message,
+          "cookieSecret must be at least 32 characters for secure encryption (Iron Session requirement)",
+        );
+      }
+    });
+
     it("should set default configuration values", () => {
       const sessions = new HonoOAuthSessions({
         oauthClient,
         storage,
-        cookieSecret: "test-secret",
+        cookieSecret: "test-secret-key-must-be-32charss",
         baseUrl: "https://test.com",
       });
 
@@ -281,5 +299,78 @@ describe("HonoOAuthSessions - Business Logic", () => {
 
     // Note: Full token refresh testing would require mocking Iron Session's sealData/unsealData
     // which is complex. We focus on the input validation logic here.
+  });
+
+  describe("v1.1.0 Helper Methods", () => {
+    describe("getOAuthSessionFromRequest()", () => {
+      it("should return null when no cookie header is present", async () => {
+        const req = new Request("https://example.com/", {
+          headers: {},
+        });
+
+        const result = await sessions.getOAuthSessionFromRequest(req);
+        assertEquals(result, null);
+      });
+
+      it("should return null when session cookie is not present", async () => {
+        const req = new Request("https://example.com/", {
+          headers: {
+            "cookie": "other=value; another=cookie",
+          },
+        });
+
+        const result = await sessions.getOAuthSessionFromRequest(req);
+        assertEquals(result, null);
+      });
+
+      it("should return null when session cookie is invalid", async () => {
+        const req = new Request("https://example.com/", {
+          headers: {
+            "cookie": "sid=invalid-base64-data",
+          },
+        });
+
+        const result = await sessions.getOAuthSessionFromRequest(req);
+        assertEquals(result, null);
+      });
+
+      // Note: Testing successful session extraction would require mocking Iron Session's
+      // unsealData and the OAuth client's restore() method, which is complex.
+      // The method relies on the same underlying logic as validateSession() which is
+      // tested indirectly through integration tests.
+    });
+
+    describe("getClearCookieHeader()", () => {
+      it("should return a Set-Cookie header that clears the session cookie", () => {
+        const header = sessions.getClearCookieHeader();
+
+        // Should include the cookie name
+        assertEquals(header.includes("sid="), true);
+
+        // Should set Max-Age to 0 to clear the cookie
+        assertEquals(header.includes("Max-Age=0"), true);
+
+        // Should include security attributes
+        assertEquals(header.includes("HttpOnly"), true);
+        assertEquals(header.includes("Secure"), true);
+        assertEquals(header.includes("SameSite=Lax"), true);
+
+        // Should set Path to /
+        assertEquals(header.includes("Path=/"), true);
+      });
+
+      it("should use custom cookie name from config", () => {
+        const customSessions = new HonoOAuthSessions({
+          oauthClient: oauthClient,
+          storage: storage,
+          cookieSecret: "test-secret-minimum-32-chars-long-abc",
+          baseUrl: "https://example.com",
+          cookieName: "custom_session",
+        });
+
+        const header = customSessions.getClearCookieHeader();
+        assertEquals(header.includes("custom_session="), true);
+      });
+    });
   });
 });

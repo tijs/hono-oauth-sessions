@@ -1,6 +1,15 @@
 // Types only - no imports needed
 
 /**
+ * Logger interface for custom logging implementations
+ */
+export interface Logger {
+  log(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+}
+
+/**
  * Storage interface for OAuth data persistence
  * Compatible with @tijs/oauth-client-deno and similar clients
  */
@@ -47,6 +56,13 @@ export interface OAuthClientInterface {
    * @returns Promise resolving to restored session, or null if not found
    */
   restore(sessionId: string): Promise<SessionInterface | null>;
+
+  /**
+   * Refresh an expired session (optional)
+   * @param session - Session to refresh
+   * @returns Promise resolving to refreshed session
+   */
+  refresh?(session: SessionInterface): Promise<SessionInterface>;
 }
 
 /**
@@ -167,6 +183,23 @@ export interface HonoOAuthConfig {
 
   /** Mobile app custom URL scheme (default: "app://auth-callback") */
   mobileScheme?: string;
+
+  /**
+   * Optional logger for debugging and monitoring.
+   * Defaults to a no-op logger that doesn't output anything.
+   * Pass console to use standard console logging.
+   * @example
+   * // Use console logging
+   * logger: console
+   *
+   * // Use custom logger
+   * logger: {
+   *   log: (...args) => myLogger.debug(...args),
+   *   warn: (...args) => myLogger.warn(...args),
+   *   error: (...args) => myLogger.error(...args),
+   * }
+   */
+  logger?: Logger;
 }
 
 /**
@@ -188,7 +221,7 @@ export interface StoredOAuthSession {
   handle?: string;
   displayName?: string;
   avatar?: string;
-  pdsUrl?: string;
+  pdsUrl: string; // Required - comes from SessionInterface.pdsUrl
   expiresAt?: number;
   createdAt: number;
   updatedAt: number;

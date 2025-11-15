@@ -1,17 +1,17 @@
 /**
- * Base error class for ValTown OAuth Sessions
+ * Base error class for Hono OAuth Sessions
  */
-export class ValTownOAuthError extends Error {
+export class HonoOAuthError extends Error {
   constructor(message: string, public code?: string) {
     super(message);
-    this.name = "ValTownOAuthError";
+    this.name = "HonoOAuthError";
   }
 }
 
 /**
  * Configuration validation error
  */
-export class ConfigurationError extends ValTownOAuthError {
+export class ConfigurationError extends HonoOAuthError {
   constructor(message: string) {
     super(message, "CONFIGURATION_ERROR");
     this.name = "ConfigurationError";
@@ -21,7 +21,7 @@ export class ConfigurationError extends ValTownOAuthError {
 /**
  * Session validation or management error
  */
-export class SessionError extends ValTownOAuthError {
+export class SessionError extends HonoOAuthError {
   constructor(message: string) {
     super(message, "SESSION_ERROR");
     this.name = "SessionError";
@@ -31,7 +31,7 @@ export class SessionError extends ValTownOAuthError {
 /**
  * Storage operation error
  */
-export class StorageError extends ValTownOAuthError {
+export class StorageError extends HonoOAuthError {
   constructor(message: string) {
     super(message, "STORAGE_ERROR");
     this.name = "StorageError";
@@ -41,7 +41,7 @@ export class StorageError extends ValTownOAuthError {
 /**
  * OAuth flow error
  */
-export class OAuthFlowError extends ValTownOAuthError {
+export class OAuthFlowError extends HonoOAuthError {
   constructor(message: string) {
     super(message, "OAUTH_FLOW_ERROR");
     this.name = "OAuthFlowError";
@@ -51,7 +51,7 @@ export class OAuthFlowError extends ValTownOAuthError {
 /**
  * Mobile app integration error
  */
-export class MobileIntegrationError extends ValTownOAuthError {
+export class MobileIntegrationError extends HonoOAuthError {
   constructor(message: string) {
     super(message, "MOBILE_INTEGRATION_ERROR");
     this.name = "MobileIntegrationError";

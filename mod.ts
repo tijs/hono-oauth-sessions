@@ -91,6 +91,7 @@
 export { HonoOAuthSessions } from "./src/sessions.ts";
 export type {
   HonoOAuthConfig,
+  Logger,
   MobileCallbackData,
   OAuthClientInterface,
   OAuthSessionsInterface,

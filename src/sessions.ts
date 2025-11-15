@@ -4,6 +4,7 @@ import { isValidHandle } from "@atproto/syntax";
 
 import type {
   HonoOAuthConfig,
+  Logger,
   OAuthStorage,
   RefreshResult,
   SessionData,
@@ -18,6 +19,13 @@ import {
   SessionError,
 } from "./errors.ts";
 
+// No-op logger for production use
+const noopLogger: Logger = {
+  log: () => {},
+  warn: () => {},
+  error: () => {},
+};
+
 /**
  * Hono OAuth session manager
  *
@@ -27,6 +35,7 @@ import {
 export class HonoOAuthSessions {
   private readonly config: Required<HonoOAuthConfig>;
   private readonly storage: OAuthStorage;
+  private readonly logger: Logger;
 
   constructor(config: HonoOAuthConfig) {
     // Validate required config
@@ -39,6 +48,11 @@ export class HonoOAuthSessions {
     if (!config.cookieSecret) {
       throw new ConfigurationError("cookieSecret is required");
     }
+    if (config.cookieSecret.length < 32) {
+      throw new ConfigurationError(
+        "cookieSecret must be at least 32 characters for secure encryption (Iron Session requirement)",
+      );
+    }
     if (!config.baseUrl) {
       throw new ConfigurationError("baseUrl is required");
     }
@@ -48,10 +62,12 @@ export class HonoOAuthSessions {
       cookieName: "sid",
       sessionTtl: 60 * 60 * 24 * 7, // 7 days
       mobileScheme: "app://auth-callback",
+      logger: noopLogger,
       ...config,
     } as Required<HonoOAuthConfig>;
 
     this.storage = config.storage;
+    this.logger = this.config.logger;
   }
 
   /**
@@ -93,7 +109,7 @@ export class HonoOAuthSessions {
         if (options.redirectPath.startsWith("/") && !options.redirectPath.startsWith("//")) {
           state.redirectPath = options.redirectPath;
         } else {
-          console.warn(`Invalid redirect path ignored: ${options.redirectPath}`);
+          this.logger.warn(`Invalid redirect path ignored: ${options.redirectPath}`);
         }
       }
 
@@ -141,7 +157,7 @@ export class HonoOAuthSessions {
       // Fetch user profile to get avatar and displayName
       let profileData: { displayName?: string; avatar?: string } = {};
       try {
-        console.log(`[OAuth] Fetching profile for ${did} from ${oauthSession.pdsUrl}`);
+        this.logger.log(`[OAuth] Fetching profile for ${did} from ${oauthSession.pdsUrl}`);
         const profileResponse = await oauthSession.makeRequest(
           "GET",
           `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${did}`,
@@ -153,15 +169,15 @@ export class HonoOAuthSessions {
             displayName: profile.displayName,
             avatar: profile.avatar,
           };
-          console.log(`[OAuth] Profile fetched successfully:`, {
+          this.logger.log(`[OAuth] Profile fetched successfully:`, {
             displayName: profileData.displayName,
             hasAvatar: !!profileData.avatar,
           });
         } else {
-          console.warn(`[OAuth] Profile fetch failed with status: ${profileResponse.status}`);
+          this.logger.warn(`[OAuth] Profile fetch failed with status: ${profileResponse.status}`);
         }
       } catch (error) {
-        console.warn("[OAuth] Failed to fetch profile during OAuth callback:", error);
+        this.logger.warn("[OAuth] Failed to fetch profile during OAuth callback:", error);
         // Continue without profile data - not critical for auth
       }
 
@@ -245,18 +261,23 @@ export class HonoOAuthSessions {
         const isExpired = oauthData.expiresAt &&
           (Date.now() + (5 * 60 * 1000) >= oauthData.expiresAt);
 
-        if (isExpired && oauthData.refreshToken && (this.config.oauthClient as any).refresh) {
-          console.log("Token is expired, refreshing for user:", session.did);
+        if (isExpired && oauthData.refreshToken && this.config.oauthClient.refresh) {
+          this.logger.log("Token is expired, refreshing for user:", session.did);
 
           // Create a session-like object that matches SessionInterface
-          const sessionForRefresh = {
+          const sessionForRefresh: SessionInterface = {
             did: oauthData.did,
             accessToken: oauthData.accessToken,
             refreshToken: oauthData.refreshToken,
             handle: oauthData.handle,
+            pdsUrl: oauthData.pdsUrl,
             timeUntilExpiry: oauthData.expiresAt
               ? Math.max(0, oauthData.expiresAt - Date.now())
               : 0,
+            // Placeholder makeRequest - not used during refresh
+            makeRequest: () => {
+              throw new Error("makeRequest not available during token refresh");
+            },
             // Add toJSON method if needed by the OAuth client
             toJSON: () => ({
               did: oauthData.did,
@@ -265,13 +286,13 @@ export class HonoOAuthSessions {
               handle: oauthData.handle,
               dpopPrivateKeyJWK: {},
               dpopPublicKeyJWK: {},
-              pdsUrl: oauthData.pdsUrl || "",
+              pdsUrl: oauthData.pdsUrl,
               tokenExpiresAt: oauthData.expiresAt || Date.now() + (60 * 60 * 1000),
             }),
           };
 
           // Use the OAuth client's refresh method if available
-          const refreshedSession = await (this.config.oauthClient as any).refresh(
+          const refreshedSession = await this.config.oauthClient.refresh(
             sessionForRefresh,
           );
 
@@ -287,10 +308,10 @@ export class HonoOAuthSessions {
           };
 
           await this.storage.set(`session:${session.did}`, updatedSessionData);
-          console.log("Token refresh successful for user:", session.did);
+          this.logger.log("Token refresh successful for user:", session.did);
         }
       } catch (refreshError) {
-        console.error("Token refresh failed during session validation:", refreshError);
+        this.logger.error("Token refresh failed during session validation:", refreshError);
         // Don't fail the session validation if refresh fails - let the client handle it
         // The session might still be usable for a short time
       }
@@ -393,29 +414,27 @@ export class HonoOAuthSessions {
       }
 
       // Use OAuth client to restore session with automatic token refresh (if expired)
-      if ((this.config.oauthClient as any).restore) {
-        try {
-          const oauthSession = await (this.config.oauthClient as any).restore(sessionData.did);
-          if (oauthSession) {
-            // The oauth-client-deno restore() method already handles token refresh automatically
-            // Tokens are managed server-side, mobile just gets a new sealed session ID
-            const newSealedToken = await sealData(
-              { did: sessionData.did },
-              { password: this.config.cookieSecret },
-            );
+      try {
+        const oauthSession = await this.config.oauthClient.restore(sessionData.did);
+        if (oauthSession) {
+          // The oauth-client-deno restore() method already handles token refresh automatically
+          // Tokens are managed server-side, mobile just gets a new sealed session ID
+          const newSealedToken = await sealData(
+            { did: sessionData.did },
+            { password: this.config.cookieSecret },
+          );
 
-            return {
-              success: true,
-              payload: {
-                did: sessionData.did,
-                sid: newSealedToken,
-              },
-            };
-          }
-        } catch (restoreError) {
-          // If restore fails, fall back to just returning a new sealed token
-          console.log("OAuth restore failed during refresh, falling back:", restoreError);
+          return {
+            success: true,
+            payload: {
+              did: sessionData.did,
+              sid: newSealedToken,
+            },
+          };
         }
+      } catch (restoreError) {
+        // If restore fails, fall back to just returning a new sealed token
+        this.logger.log("OAuth restore failed during refresh, falling back:", restoreError);
       }
 
       // Fallback: Just return a new sealed session ID without token refresh
@@ -509,7 +528,7 @@ export class HonoOAuthSessions {
    * ```
    */
   async getOAuthSession(did: string): Promise<SessionInterface | null> {
-    console.log(`Restoring OAuth session for DID: ${did}`);
+    this.logger.log(`Restoring OAuth session for DID: ${did}`);
 
     // The OAuth client's restore() method now throws typed errors
     // instead of returning null. We propagate these errors to give
@@ -517,9 +536,9 @@ export class HonoOAuthSessions {
     const session = await this.config.oauthClient.restore(did);
 
     if (session) {
-      console.log(`OAuth session restored successfully for DID: ${did}`);
+      this.logger.log(`OAuth session restored successfully for DID: ${did}`);
     } else {
-      console.log(`OAuth session not found for DID: ${did}`);
+      this.logger.log(`OAuth session not found for DID: ${did}`);
     }
 
     return session;
@@ -560,10 +579,12 @@ export class HonoOAuthSessions {
         return null;
       }
 
-      const sessionCookie = cookieHeader
-        .split(";")
-        .find((c) => c.trim().startsWith(`${this.config.cookieName}=`))
-        ?.split("=")[1];
+      // Parse cookie properly to handle '=' in values
+      const cookies = cookieHeader.split(";").map((c) => c.trim());
+      const cookiePrefix = `${this.config.cookieName}=`;
+      const sessionCookie = cookies
+        .find((c) => c.startsWith(cookiePrefix))
+        ?.substring(cookiePrefix.length);
 
       if (!sessionCookie) {
         return null;
@@ -576,14 +597,14 @@ export class HonoOAuthSessions {
 
       const userDid = sessionData?.did;
       if (!userDid) {
-        console.error("No DID found in session data:", sessionData);
+        this.logger.error("No DID found in session data:", sessionData);
         return null;
       }
 
       // Get OAuth session (with automatic token refresh)
       return await this.getOAuthSession(userDid);
     } catch (error) {
-      console.error("Failed to get OAuth session from request:", error);
+      this.logger.error("Failed to get OAuth session from request:", error);
       return null;
     }
   }

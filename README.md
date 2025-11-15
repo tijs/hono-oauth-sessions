@@ -119,6 +119,40 @@ const sessions = new HonoOAuthSessions({
 });
 ```
 
+## Logging and Debugging
+
+By default, the library uses a no-op logger (no output). You can enable logging for debugging or monitoring:
+
+```typescript
+// Use console logging
+const sessions = new HonoOAuthSessions({
+  oauthClient,
+  storage,
+  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
+  baseUrl: "https://myapp.com",
+  logger: console, // Enable console logging
+});
+
+// Use custom logger
+const sessions = new HonoOAuthSessions({
+  oauthClient,
+  storage,
+  cookieSecret: Deno.env.get("COOKIE_SECRET")!,
+  baseUrl: "https://myapp.com",
+  logger: {
+    log: (...args) => myLogger.debug(...args),
+    warn: (...args) => myLogger.warn(...args),
+    error: (...args) => myLogger.error(...args),
+  },
+});
+```
+
+The logger will output:
+- OAuth flow progress (profile fetching, token refresh)
+- Session validation and restoration
+- Configuration warnings (e.g., invalid redirect paths)
+- Error details during OAuth callbacks and session management
+
 ## Storage Implementations
 
 ### Val Town SQLite Storage
@@ -389,7 +423,7 @@ interface HonoOAuthConfig {
   /** Storage instance for OAuth session data */
   storage: OAuthStorage;
 
-  /** Secret for Iron Session encryption */
+  /** Secret for Iron Session encryption (minimum 32 characters required) */
   cookieSecret: string;
 
   /** Base URL of your application */
@@ -407,6 +441,13 @@ interface HonoOAuthConfig {
 
   /** Mobile URL scheme (default: "app://auth-callback") */
   mobileScheme?: string;
+
+  /**
+   * Optional logger for debugging and monitoring (default: no-op logger)
+   * Pass console for standard console logging or provide a custom logger.
+   * Example: logger: console or logger: { log: (...args) => {}, warn: (...args) => {}, error: (...args) => {} }
+   */
+  logger?: Logger;
 }
 ```
 
@@ -450,6 +491,43 @@ Refresh mobile session token from Authorization header.
 #### `logout(c: Context): Promise<void>`
 
 Destroy session and clean up stored data.
+
+#### `getOAuthSessionFromRequest(req: Request): Promise<SessionInterface | null>` (v1.1.0+)
+
+Helper method to extract and validate an OAuth session directly from a Request object. Useful for custom middleware or non-Hono contexts where you don't have access to the Hono Context object.
+
+**Returns:**
+- `SessionInterface` if session is valid and found
+- `null` if no session exists, cookie is missing, or session is invalid
+
+**Example:**
+```typescript
+// In a custom middleware or API handler
+const session = await sessions.getOAuthSessionFromRequest(request);
+if (!session) {
+  return new Response("Unauthorized", { status: 401 });
+}
+
+// Use the session
+const profile = await session.makeRequest(
+  "GET",
+  `${session.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${session.did}`
+);
+```
+
+#### `getClearCookieHeader(): string` (v1.1.0+)
+
+Returns a `Set-Cookie` header string that clears the session cookie. Useful when you need to manually construct logout responses or clear sessions in custom scenarios.
+
+**Example:**
+```typescript
+// Manual logout response
+return new Response("Logged out", {
+  headers: {
+    "Set-Cookie": sessions.getClearCookieHeader(),
+  },
+});
+```
 
 ## Error Handling
 
