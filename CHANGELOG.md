@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-01-15
+
+### Fixed
+
+- **CRITICAL**: Fixed logger default value bug causing production crashes
+  - When `config.logger` was `undefined`, the spread operator (`...config`) would override the `noopLogger` default with `undefined`
+  - This caused `TypeError: Cannot read properties of undefined (reading 'log')` in production
+  - Changed default assignment order to apply defaults only when values are actually undefined
+  - Applications no longer crash when logger is not explicitly provided
+
+### Improved
+
+- **Robustness**: Logger is now guaranteed to never be `undefined`
+  - Default `noopLogger` is properly applied when no logger is configured
+  - All logging operations are safe even if logger configuration is missing
+  - Better defense-in-depth against configuration errors
+
 ## [2.0.0] - 2025-01-15
 
 ### Removed (BREAKING CHANGES)

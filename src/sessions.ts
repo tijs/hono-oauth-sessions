@@ -57,13 +57,13 @@ export class HonoOAuthSessions {
       throw new ConfigurationError("baseUrl is required");
     }
 
-    // Set defaults
+    // Set defaults - spread config first, then apply defaults for undefined values
     this.config = {
-      cookieName: "sid",
-      sessionTtl: 60 * 60 * 24 * 7, // 7 days
-      mobileScheme: "app://auth-callback",
-      logger: noopLogger,
       ...config,
+      cookieName: config.cookieName || "sid",
+      sessionTtl: config.sessionTtl ?? 60 * 60 * 24 * 7, // 7 days
+      mobileScheme: config.mobileScheme || "app://auth-callback",
+      logger: config.logger || noopLogger, // Never undefined - always have a logger
     } as Required<HonoOAuthConfig>;
 
     this.storage = config.storage;
