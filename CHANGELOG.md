@@ -54,8 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    const result = await sessions.validateSession(c);
    if (result.valid) {
      const oauthSession = await sessions.getOAuthSession(result.did);
-     const profile = await oauthSession.makeRequest('GET',
-       `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${result.did}`);
+     const profile = await oauthSession.makeRequest(
+       "GET",
+       `${oauthSession.pdsUrl}/xrpc/app.bsky.actor.getProfile?actor=${result.did}`,
+     );
    }
    ```
 

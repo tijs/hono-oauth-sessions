@@ -36,6 +36,7 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 ### Core Components
 
 **src/sessions.ts** (main implementation, ~600 lines)
+
 - `HonoOAuthSessions` class - The primary session management class
 - Integrates Iron Session cookies for secure session persistence
 - Delegates OAuth operations to pluggable OAuth clients
@@ -43,6 +44,7 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 - Handles both web (cookie-based) and mobile (Bearer token) authentication flows
 
 **src/types.ts** (interfaces)
+
 - `OAuthClientInterface` - Contract for OAuth clients (authorize, callback, restore, optional refresh)
 - `OAuthStorage` - Simple key-value storage interface (get, set, delete with optional TTL)
 - `SessionInterface` - OAuth session with DPoP authentication via `makeRequest()`
@@ -50,30 +52,36 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 - `Logger` - Logging abstraction (log, warn, error methods)
 
 **src/errors.ts**
+
 - Custom error hierarchy: `HonoOAuthError` base class
 - Specific errors: `ConfigurationError`, `OAuthFlowError`, `SessionError`, `MobileIntegrationError`, `StorageError`
 
 **mod.ts**
+
 - Public API exports (HonoOAuthSessions class, all types, all errors)
 
 ### Key Architectural Patterns
 
 **Bring Your Own (BYO) Pattern**
+
 - OAuth client is injected via `OAuthClientInterface`
 - Storage is injected via `OAuthStorage`
 - This enables use with any compatible OAuth client (e.g., `@tijs/oauth-client-deno`, `@atproto/oauth-client-node`) and any storage backend (SQLite, Redis, memory, etc.)
 
 **Session Storage Keys**
+
 - Uses `session:{did}` pattern for storing OAuth session data
 - Compatible with `@tijs/oauth-client-deno` storage expectations
 - The same storage instance should be shared between OAuth client and session manager
 
 **Dual Authentication Modes**
+
 - Web: Iron Session cookies with automatic encryption/decryption
 - Mobile: Encrypted Bearer tokens passed via Authorization header
 - Mobile callbacks use custom URL schemes (default: `app://auth-callback`)
 
 **Token Refresh Flow (v1.2.0+)**
+
 - Uses honest `RefreshTokenData` interface instead of fake `SessionInterface` objects
 - OAuth clients can optionally implement `refresh(tokens: RefreshTokenData)` method
 - Automatic refresh when tokens are within 5 minutes of expiry during session validation
@@ -81,11 +89,13 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 ## Configuration Requirements
 
 **Cookie Secret**
+
 - Must be at least 32 characters (Iron Session requirement)
 - Enforced at runtime with clear error message
 - Used for encrypting session cookies
 
 **Logger Configuration**
+
 - Defaults to no-op logger (no console output in production)
 - Can pass `console` for standard logging
 - Can pass custom logger implementing `Logger` interface
@@ -93,6 +103,7 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 ## Testing Strategy
 
 **src/simple.test.ts**
+
 - Unit tests for business logic using mock implementations
 - `MockStorage` - In-memory Map-based storage for testing
 - `MockOAuthClient` - Configurable OAuth client mock
@@ -100,6 +111,7 @@ deno test --allow-net --allow-read --allow-env src/simple.test.ts
 - No external dependencies (no actual OAuth servers, no real storage backends)
 
 **Test Coverage Guidelines**
+
 - All public methods should have test coverage
 - Use dependency injection to test business logic in isolation
 - Mock external dependencies (OAuth clients, storage, Iron Session)
@@ -116,6 +128,7 @@ This project uses automated GitHub Actions publishing:
 5. Push with tags: `git push && git push --tags`
 
 GitHub Actions will automatically:
+
 - Run `deno task ci` (fmt, lint, check, test)
 - Publish to JSR if all checks pass
 
@@ -135,6 +148,7 @@ The library uses custom cookie parsing to handle Iron Session cookies which may 
 ## AT Protocol Integration
 
 Sessions include `makeRequest()` for DPoP-authenticated requests:
+
 - Uses `Authorization: DPoP <token>` header (not `Bearer`)
 - Handles DPoP proof generation, nonce challenges, and retry logic
 - Includes access token hash (ath) in DPoP proof
