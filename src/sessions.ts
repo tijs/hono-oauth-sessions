@@ -431,18 +431,43 @@ export class HonoOAuthSessions {
   async getOAuthSession(did: string): Promise<SessionInterface | null> {
     this.logger.log(`Restoring OAuth session for DID: ${did}`);
 
-    // The OAuth client's restore() method now throws typed errors
-    // instead of returning null. We propagate these errors to give
-    // calling code better visibility into why session restoration failed.
-    const session = await this.config.oauthClient.restore(did);
+    try {
+      // The OAuth client's restore() method now throws typed errors
+      // instead of returning null. We propagate these errors to give
+      // calling code better visibility into why session restoration failed.
+      const session = await this.config.oauthClient.restore(did);
 
-    if (session) {
-      this.logger.log(`OAuth session restored successfully for DID: ${did}`);
-    } else {
-      this.logger.log(`OAuth session not found for DID: ${did}`);
+      if (session) {
+        this.logger.log(`OAuth session restored successfully for DID: ${did}`);
+
+        // Log token expiration information if available
+        if (session.timeUntilExpiry !== undefined) {
+          const timeUntilExpiryMinutes = Math.round(session.timeUntilExpiry / 1000 / 60);
+          const wasLikelyRefreshed = session.timeUntilExpiry > (60 * 60 * 1000); // More than 1 hour suggests refresh happened
+          const now = Date.now();
+          const expiresAt = now + session.timeUntilExpiry;
+
+          this.logger.log(`Token status for DID ${did}:`, {
+            expiresAt: new Date(expiresAt).toISOString(),
+            currentTime: new Date(now).toISOString(),
+            timeUntilExpiryMinutes,
+            wasLikelyRefreshed,
+            hasRefreshToken: !!session.refreshToken,
+          });
+        }
+      } else {
+        this.logger.log(`OAuth session not found for DID: ${did}`);
+      }
+
+      return session;
+    } catch (error) {
+      this.logger.error(`Failed to restore OAuth session for DID ${did}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.constructor.name : "Unknown",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error; // Re-throw to let caller handle specific error types
     }
-
-    return session;
   }
 
   /**
@@ -477,6 +502,7 @@ export class HonoOAuthSessions {
       // Extract session cookie
       const cookieHeader = req.headers.get("cookie");
       if (!cookieHeader?.includes(`${this.config.cookieName}=`)) {
+        this.logger.log("No session cookie found in request");
         return null;
       }
 
@@ -488,6 +514,7 @@ export class HonoOAuthSessions {
         ?.substring(cookiePrefix.length);
 
       if (!sessionCookie) {
+        this.logger.log("Session cookie found in header but could not be parsed");
         return null;
       }
 
@@ -502,10 +529,17 @@ export class HonoOAuthSessions {
         return null;
       }
 
+      this.logger.log(
+        `Session cookie unsealed successfully, DID: ${userDid}, attempting OAuth session restore...`,
+      );
+
       // Get OAuth session (with automatic token refresh)
       return await this.getOAuthSession(userDid);
     } catch (error) {
-      this.logger.error("Failed to get OAuth session from request:", error);
+      this.logger.error("Failed to get OAuth session from request:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }

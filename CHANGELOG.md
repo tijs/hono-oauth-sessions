@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-01-16
+
+### Improved
+
+- **Enhanced session validation logging** for better debugging and troubleshooting
+  - Added detailed logging in `getOAuthSessionFromRequest()` to track cookie parsing and session restoration
+  - Added comprehensive logging in `getOAuthSession()` to show token expiration status and refresh activity
+  - Logs now include token expiration timestamps, time until expiry, and whether tokens were likely refreshed
+  - Error logging now includes full error details with stack traces and error type classification
+  - Makes it much easier to diagnose authentication issues and token refresh failures
+
 ## [2.1.1] - 2025-01-15
 
 ### Fixed
