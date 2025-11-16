@@ -154,8 +154,10 @@ export class HonoOAuthSessions {
       const { session: oauthSession } = callbackResult;
       const did = oauthSession.did;
 
-      // Store OAuth session data including DPoP keys
-      await this.storage.set(`session:${did}`, oauthSession.toJSON());
+      // Store OAuth session data including DPoP keys with TTL matching the session TTL
+      await this.storage.set(`session:${did}`, oauthSession.toJSON(), {
+        ttl: this.config.sessionTtl,
+      });
 
       // Create Iron Session
       const session = await this.getSession(c);

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2025-11-16
+
+### Fixed
+
+- **Session persistence**: OAuth session data is now stored with a TTL matching the configured `sessionTtl`
+  - Previously, OAuth session data (`session:${did}`) was stored without an expiration time in storage
+  - This caused sessions to persist indefinitely in the database, even though iron-session cookies had proper TTL
+  - Now the OAuth session data expires at the same time as the iron-session cookie (default: 14 days)
+  - Fixes issue where users could be unexpectedly signed out due to orphaned session data
+
 ## [2.1.2] - 2025-01-16
 
 ### Improved
