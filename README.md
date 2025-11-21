@@ -156,6 +156,8 @@ The logger will output:
 
 ## Storage Implementations
 
+The `OAuthStorage` interface is fully compatible with [`@tijs/oauth-client-deno`](https://jsr.io/@tijs/oauth-client-deno), so you can share the same storage instance between the OAuth client and the session manager.
+
 ### Val Town SQLite Storage
 
 ```typescript
