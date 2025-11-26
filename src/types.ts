@@ -342,4 +342,30 @@ export interface OAuthSessionsInterface {
    * @returns Set-Cookie header string
    */
   getClearCookieHeader(): string;
+
+  /**
+   * Get OAuth session from a raw Request object with refreshed cookie
+   * @param req - HTTP request containing session cookie
+   * @returns OAuth session result with optional Set-Cookie header for refresh
+   */
+  getOAuthSessionFromRequestWithCookie(req: Request): Promise<OAuthSessionFromRequestResult>;
+}
+
+/**
+ * Result from getOAuthSessionFromRequestWithCookie()
+ * Contains both the session and optional Set-Cookie header for session refresh
+ */
+export interface OAuthSessionFromRequestResult {
+  /** The OAuth session, or null if not found/invalid */
+  session: SessionInterface | null;
+
+  /** Set-Cookie header to refresh the session (always set when session is valid) */
+  setCookieHeader?: string;
+
+  /** Error information if session retrieval failed */
+  error?: {
+    type: "NO_COOKIE" | "INVALID_COOKIE" | "SESSION_EXPIRED" | "OAUTH_ERROR" | "UNKNOWN";
+    message: string;
+    details?: unknown;
+  };
 }

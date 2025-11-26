@@ -94,6 +94,7 @@ export type {
   Logger,
   MobileCallbackData,
   OAuthClientInterface,
+  OAuthSessionFromRequestResult,
   OAuthSessionsInterface,
   OAuthStorage,
   SessionData,

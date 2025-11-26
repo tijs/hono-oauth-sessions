@@ -5,6 +5,7 @@ import { isValidHandle } from "@atproto/syntax";
 import type {
   HonoOAuthConfig,
   Logger,
+  OAuthSessionFromRequestResult,
   OAuthStorage,
   RefreshResult,
   SessionData,
@@ -500,12 +501,54 @@ export class HonoOAuthSessions {
    * ```
    */
   async getOAuthSessionFromRequest(req: Request): Promise<SessionInterface | null> {
+    const result = await this.getOAuthSessionFromRequestWithCookie(req);
+    return result.session;
+  }
+
+  /**
+   * Get OAuth session from a raw Request object with refreshed session cookie
+   *
+   * This method properly refreshes the iron-session cookie on each request,
+   * extending the session lifetime. Use this when you need to set the refreshed
+   * cookie header on the response.
+   *
+   * The Set-Cookie header should be set on successful responses to keep the
+   * session alive. If not set, the session will eventually expire based on
+   * the original login time.
+   *
+   * @param req - The HTTP request containing the session cookie
+   * @returns Promise resolving to session result with Set-Cookie header
+   *
+   * @example
+   * ```ts
+   * app.get('/api/data', async (c) => {
+   *   const { session, setCookieHeader, error } = await sessions.getOAuthSessionFromRequestWithCookie(c.req.raw);
+   *
+   *   if (!session) {
+   *     return c.json({ error: error?.message || 'Auth required' }, 401);
+   *   }
+   *
+   *   const response = c.json({ data: 'protected data' });
+   *   if (setCookieHeader) {
+   *     response.headers.set('Set-Cookie', setCookieHeader);
+   *   }
+   *   return response;
+   * });
+   * ```
+   */
+  async getOAuthSessionFromRequestWithCookie(req: Request): Promise<OAuthSessionFromRequestResult> {
     try {
       // Extract session cookie
       const cookieHeader = req.headers.get("cookie");
       if (!cookieHeader?.includes(`${this.config.cookieName}=`)) {
         this.logger.log("No session cookie found in request");
-        return null;
+        return {
+          session: null,
+          error: {
+            type: "NO_COOKIE",
+            message: "No session cookie found in request",
+          },
+        };
       }
 
       // Parse cookie properly to handle '=' in values
@@ -517,32 +560,125 @@ export class HonoOAuthSessions {
 
       if (!sessionCookie) {
         this.logger.log("Session cookie found in header but could not be parsed");
-        return null;
+        return {
+          session: null,
+          error: {
+            type: "INVALID_COOKIE",
+            message: "Session cookie could not be parsed",
+          },
+        };
       }
 
       // Unseal session data to get DID
-      const sessionData = await unsealData(decodeURIComponent(sessionCookie), {
-        password: this.config.cookieSecret,
-      }) as SessionData;
+      let sessionData: SessionData;
+      try {
+        sessionData = await unsealData(decodeURIComponent(sessionCookie), {
+          password: this.config.cookieSecret,
+        }) as SessionData;
+      } catch (unsealError) {
+        this.logger.error("Failed to unseal session cookie:", {
+          error: unsealError instanceof Error ? unsealError.message : String(unsealError),
+        });
+        return {
+          session: null,
+          error: {
+            type: "SESSION_EXPIRED",
+            message: "Session cookie is invalid or expired",
+            details: unsealError instanceof Error ? unsealError.message : String(unsealError),
+          },
+        };
+      }
 
       const userDid = sessionData?.did;
       if (!userDid) {
         this.logger.error("No DID found in session data:", sessionData);
-        return null;
+        return {
+          session: null,
+          error: {
+            type: "INVALID_COOKIE",
+            message: "No DID found in session data",
+          },
+        };
       }
 
       this.logger.log(
-        `Session cookie unsealed successfully, DID: ${userDid}, attempting OAuth session restore...`,
+        `Session cookie unsealed successfully, DID: ${userDid}, session created: ${
+          new Date(sessionData.createdAt).toISOString()
+        }, last accessed: ${new Date(sessionData.lastAccessed).toISOString()}`,
       );
 
       // Get OAuth session (with automatic token refresh)
-      return await this.getOAuthSession(userDid);
+      let oauthSession: SessionInterface | null;
+      try {
+        oauthSession = await this.getOAuthSession(userDid);
+      } catch (oauthError) {
+        this.logger.error("Failed to restore OAuth session:", {
+          did: userDid,
+          error: oauthError instanceof Error ? oauthError.message : String(oauthError),
+        });
+        return {
+          session: null,
+          error: {
+            type: "OAUTH_ERROR",
+            message: oauthError instanceof Error
+              ? oauthError.message
+              : "OAuth session restore failed",
+            details: oauthError,
+          },
+        };
+      }
+
+      if (!oauthSession) {
+        this.logger.log(`OAuth session not found for DID: ${userDid}`);
+        return {
+          session: null,
+          error: {
+            type: "SESSION_EXPIRED",
+            message: "OAuth session not found in storage",
+          },
+        };
+      }
+
+      // Create refreshed session cookie with updated lastAccessed timestamp
+      const refreshedSessionData: SessionData = {
+        did: userDid,
+        createdAt: sessionData.createdAt,
+        lastAccessed: Date.now(),
+      };
+
+      // Seal the refreshed session data with TTL
+      const sealedSession = await sealData(refreshedSessionData, {
+        password: this.config.cookieSecret,
+        ttl: this.config.sessionTtl,
+      });
+
+      // Build Set-Cookie header
+      const maxAge = this.config.sessionTtl;
+      const setCookieHeader = `${this.config.cookieName}=${
+        encodeURIComponent(sealedSession)
+      }; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${maxAge}`;
+
+      this.logger.log(
+        `Session refreshed for DID: ${userDid}, new expiry in ${Math.round(maxAge / 86400)} days`,
+      );
+
+      return {
+        session: oauthSession,
+        setCookieHeader,
+      };
     } catch (error) {
       this.logger.error("Failed to get OAuth session from request:", {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      return null;
+      return {
+        session: null,
+        error: {
+          type: "UNKNOWN",
+          message: error instanceof Error ? error.message : "Unknown error",
+          details: error,
+        },
+      };
     }
   }
 

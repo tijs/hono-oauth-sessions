@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-11-26
+
+### Added
+
+- **`getOAuthSessionFromRequestWithCookie()` method**: New method that returns both the session and a Set-Cookie header for refreshing the iron-session cookie
+  - Returns `OAuthSessionFromRequestResult` with `session`, `setCookieHeader`, and `error` fields
+  - The `setCookieHeader` should be set on responses to keep the session alive
+  - Enables proper session TTL extension on each request (rolling sessions)
+
+- **`OAuthSessionFromRequestResult` interface**: New type for the result of session retrieval with cookie refresh
+  - Includes typed error information with `type`, `message`, and `details` fields
+  - Error types: `NO_COOKIE`, `INVALID_COOKIE`, `SESSION_EXPIRED`, `OAUTH_ERROR`, `UNKNOWN`
+
+### Fixed
+
+- **CRITICAL: Iron-session cookie refresh**: Fixed issue where iron-session cookies were never refreshed after initial creation
+  - Previously, `getOAuthSessionFromRequest()` would unseal and read the cookie but never refresh it
+  - The cookie TTL was baked in during encryption at login time and never extended
+  - Sessions would expire based on original login time, not last activity
+  - Now properly refreshes the cookie with new TTL on each successful session retrieval
+  - Fixes sessions timing out after 1-2 hours instead of the configured 14 days
+
+### Changed
+
+- **`getOAuthSessionFromRequest()` now delegates to `getOAuthSessionFromRequestWithCookie()`**: Maintains backward compatibility while using new refresh logic internally
+
 ## [2.1.3] - 2025-11-16
 
 ### Fixed
