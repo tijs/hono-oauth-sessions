@@ -1,5 +1,8 @@
 # @tijs/hono-oauth-sessions
 
+> **⚠️ Use [`@tijs/atproto-sessions`](https://jsr.io/@tijs/atproto-sessions) instead.**
+> This package is no longer maintained.
+
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/tijsteulings)
 
 Storage-agnostic OAuth session management for AT Protocol applications. **Bring your own OAuth client and storage** - requires specific interfaces (see documentation).
